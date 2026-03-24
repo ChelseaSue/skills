@@ -153,6 +153,76 @@ grep -n '\.\.\.' swdd/{模块名}/img/*_Flowchart.mmd
 2. 测试人员无法依据流程图编写完整测试用例
 3. 后续维护时无法判断简写代表的具体内容
 
+### 死代码必须排除（重要！）
+
+**规则**：以下三类"死代码"中的函数**禁止写入 SWDD 文档**的任何位置（静态图、总览表、动态图、函数详设）：
+
+**三类死代码：**
+
+| 类型 | 定义 | 示例 |
+|------|------|------|
+| 1. 条件编译未启用 | `#ifdef MACRO` 块内且该宏未 `#define`；`#if 0` 块内 | `#ifdef DMEM_FLS_FUNCTION_ENABLE` 包裹的 `DMEM_u8BlankCheck` |
+| 2. 代码被注释 | 函数体、extern 声明或调用处被 `//` 或 `/* */` 注释掉 | `// extern void ADESC_vidDisable48VOptRsnInit()` |
+| 3. 定义了但无调用方 | 函数存在于 .c 文件中，但整个项目中无任何地方调用它 | `DESC_vidStorNewRsn` 唯一调用被注释掉；`DESC_u32SwitchU32` 唯一调用方在未编译的 `#ifdef` 块中 |
+
+**检查步骤**：
+
+**类型1 - 条件编译未启用：**
+```bash
+# 查找源码中所有 #ifdef / #if 0 块
+grep -n "#ifdef\|#ifndef\|#if 0" BBS_K311_APP/src/Source/{层}/{模块名}/*.[ch]
+# 检查每个宏是否在项目中定义
+grep -r "#define 宏名" BBS_K311_APP/
+```
+
+**类型2 - 代码被注释：**
+```bash
+# 查找 int.h 中被注释掉的 extern 声明
+grep -n "//.*extern" BBS_K311_APP/src/Source/{层}/{模块名}/*_int.h
+```
+
+**类型3 - 定义了但无调用方（最重要！）：**
+```bash
+# 对每个函数，在整个项目中搜索调用方
+grep -rn "函数名" BBS_K311_APP/src/ BBS_K311_APP/MCAL/ --include="*.c"
+# 注意：必须追踪完整的 RTE 宏链！
+# 例如 HPWM_vidPwmInit → DRTE_vidPwmInit → HRTE_vidPwmInit → SRTE_vidPwmInit → SMIC_vidPwmInit
+# 只有链条末端的宏在某个 .c 文件中被调用，才算有调用方
+# 仅在注释中出现不算调用（如 //DESC_vidStorNewRsn(u8FaultData);）
+```
+
+**注意**：
+- 始终编译的函数（`#ifdef` 块外面的）且有调用方的正常写入
+- RTE 宏链（DRTE→HRTE→SRTE→SMIC）必须追踪到底，不能只看直接调用
+
+### 静态图必须展开所有函数，禁止通配符分组（重要！）
+
+**规则**：2.4.1 Static Diagram 中必须列出**每一个**函数的独立节点，禁止使用通配符（`*`）或分组简写。
+
+**禁止的简写模式：**
+
+| 禁止模式 | 示例（错误） | 正确写法 |
+|---------|------------|---------|
+| 通配符分组 | `ADESC_vidReadDid_*` | 逐个列出每个 ReadDid 函数节点 |
+| 斜杠分组 | `ADESC_vid/u16 SupplierID/FunctionID` | 分别列出 vidSetSupplierID, u16GetSupplierID, vidSetFunctionID, u16GetFunctionID |
+| 范围分组 | `ADESC_bolLinDrv*Flg` | 逐个列出每个 LinDrv 标志函数 |
+
+**正确做法**：
+- 静态图节点数量必须与 2.4.2 Component Overview Table 的函数数量一致
+- 用 `subgraph` 按功能分组保持可读性（如 "DID Read (FD00-FD09)"、"LIN Driver Flags" 等）
+- 外部调用方应精确标注（如 `Rte.c`、`LinIf`、`SMIC` 等），不要用模糊的 "DCM" 或 "LIN Driver"
+- 通过 SRTE 宏映射的调用应标注 `(via SRTE)`
+
+**验证命令**：
+```bash
+# 检查静态图是否有通配符
+grep '\*\|\.\.\./' swdd/{模块名}/img/*Static_Diagram*.mmd
+# 应该无输出
+# 对比函数数量
+grep -c '^\|' swdd/{模块名}/BBS_K311_APP_*_EN.md | head -5  # 表格行数
+grep -c '"\w' swdd/{模块名}/img/*Static_Diagram*.mmd  # 节点数
+```
+
 ### 经验教训：赋值语句不重复原则 ⚠️
 
 **问题描述**：在状态机流程图中，entry/during阶段的赋值语句（如设置LIN信号）只在状态开始时执行一次。Stay节点表示"所有条件都不满足后break"，不应该再包含已执行过的赋值语句。
@@ -717,6 +787,11 @@ Establish bidirectional traceability relationships between software architecture
   - 禁止概括性描述如 `Any digit > 0x09?`、`Validate BCD digits`
   - 禁止半条件省略如 `< MIN || > MAX`（两侧都要写完整变量名）
   - 验证命令：`grep -n '\.\.\.' swdd/{模块名}/img/*_Flowchart.mmd`（应无输出）
+- [ ] **条件编译函数必须排除（必做）**：
+  - 扫描源码中 `#ifdef` / `#ifndef` / `#if 0` 块
+  - 检查宏是否在项目中 `#define`，未定义则块内函数不得写入文档
+  - 验证命令：`grep -n "#ifdef\|#ifndef\|#if 0" BBS_K311_APP/src/Source/{层}/{模块名}/*.[ch]`
+  - 对每个宏：`grep -r "#define 宏名" BBS_K311_APP/`（无输出 = 未定义 = 排除）
 - [ ] **流程图不得简化或编造（必做）**：
   - 必须对照源代码逐行检查流程图
   - 空函数就是空函数，不能添加虚构步骤
