@@ -24,6 +24,9 @@ description: 软件详细设计文档（SWDD）生成工具。用于根据嵌入
    - 空函数就是空函数（只有`}`），不能添加任何虚构步骤
    - 变量名、函数调用、赋值语句必须与源码完全一致
    - 禁止添加源码中不存在的操作（如"Clr Alarm"、"Set Status"等泛化描述）
+9. **函数分类**：
+   - External函数：被外部模块实际调用
+   - Internal函数：仅被本模块函数调用
 
 ### 编写流程图前的源码分析检查清单（必须逐项完成！）
 
@@ -65,6 +68,90 @@ case IS_XXX:
 | if后 **无return**，后面还有代码 | 该动作节点 → 继续连接到下一个检查 | ArmingToIntDiag → ArmingExit2Check |
 | if-else（互斥） | Y分支和N分支都画，但不能同时存在 | 判断框有两个分支 |
 | 两个独立if（非if-else） | 两个独立的检查路径，后续if的入口需要额外连接 | ArmingExit1 → ArmingToIntDiag → ArmingExit2Check |
+| **ASSERT(条件)** | **必须作为判断分支**：Y分支继续正常流程，N分支连接到 "ASSERT failure" → End | 见下方 ASSERT 规则 |
+| **switch-case** | **每个case和default分支都必须带编号**，格式 `-->\|"N) case值"\|`，编号与其他判断分支统一连续 | 见下方 switch-case 规则 |
+
+### switch-case 分支必须全部编号（重要！）
+
+**规则**：switch-case 语句在流程图中表示为判断菱形框，其所有分支（每个 case 值 + default）必须带编号，且与整个流程图的编号体系连续。
+
+**错误做法**：
+```mermaid
+    SwitchAxis -->|"MC36XX_AXIS_X"| SetX["..."]
+    SwitchAxis -->|"MC36XX_AXIS_Y"| SetY["..."]
+    SwitchAxis -->|"default"| Next
+```
+问题：分支没有编号，且判断框文本不明确。
+
+**正确做法**：
+```mermaid
+    SwitchAxis{"switch(axis)"}
+    SwitchAxis -->|"1) MC36XX_AXIS_X"| SetX["_bRegData = 0x01"]
+    SwitchAxis -->|"2) MC36XX_AXIS_Y"| SetY["_bRegData = 0x02"]
+    SwitchAxis -->|"3) MC36XX_AXIS_Z"| SetZ["_bRegData = 0x03"]
+    SwitchAxis -->|"4) default"| Next
+```
+
+**要点**：
+- 判断框文本使用 `switch(变量名)` 格式，不能只写 `变量名?`
+- 每个 case 值和 default 都必须有编号
+- 编号与其他 if/else 判断分支连续递增（不单独编号）
+- 即使 default 分支只是 break 不做任何事，也必须画出并编号
+
+### ASSERT 必须作为流程图判断分支（重要！）
+
+**规则**：源码中的 `ASSERT(条件)` 不是普通的赋值语句，它是一个**运行时检查**，必须在流程图中体现为判断菱形框，包含 Y/N 两个分支：
+- **Y 分支**：条件成立，继续正常流程
+- **N 分支**：条件不成立，进入 "ASSERT failure" 处理框 → End
+
+**Mermaid 示例**：
+```mermaid
+flowchart TD
+    PrevStep --> AssertChk{"ASSERT:<br/>pstrRequestSeed != NULL_PTR?"}
+    AssertChk -->|"1) Y"| NextStep["正常流程继续"]
+    AssertChk -->|"2) N"| AssertFail["ASSERT failure"]
+    AssertFail --> End([End])
+```
+
+**错误做法**：将 ASSERT 视为普通语句放在处理框中，或直接省略不画。
+**正确做法**：将 ASSERT 作为判断菱形框，标注 `ASSERT:` 前缀 + 判断条件，Y/N 分支各有编号。
+
+**验证命令**：
+```bash
+# 在源码中查找所有 ASSERT 调用
+grep -n "ASSERT(" BBS_K311_APP/src/Source/APP/{模块名}/*_prg.c
+# 在对应流程图中确认 ASSERT 作为判断框存在
+grep -i "ASSERT" swdd/{模块名}/img/*_Flowchart.mmd
+```
+
+### 流程图禁止任何形式的简写/缩写（重要！）
+
+**规则**：流程图中所有标识符、函数调用、条件表达式必须与源码**完全一致**，禁止任何形式的省略或缩写。
+
+**禁止的简写模式：**
+
+| 禁止模式 | 示例（错误） | 正确写法 |
+|---------|------------|---------|
+| `...` 省略前缀 | `Rte_Write_...BbsLpc7LinFr01_` | `Rte_Write_Cfg_Tx_LPCSystem_LPC7LIN_BbsLpc7LinFr01_` |
+| `...` 省略中间路径 | `strFr02...int_mem_ok` | `strFr02.SoundrBattBackedDiag.bits.int_mem_ok` |
+| `...` 省略函数参数 | `AesCmacVerify(key, ...)` | `AesCmacVerify(key, len, plain, &authLen, authData, OPT)` |
+| `...` 省略中间调用 | `mc_read_regs(X_LSB) ... mc_read_regs(Z_MSB)` | 逐个列出全部6次调用 |
+| 范围简写 | `Nr1..Nr4`, `[0..3]`, `u8Index1..7` | 逐个列出每次赋值/调用 |
+| 概括性描述 | `Any digit > 0x09?` | `serialUnits > 0x09 \|\|<br/>serialTens > 0x09 \|\|<br/>serialHundreds > 0x09 \|\|<br/>serialThousands > 0x09?` |
+| 描述性过程 | `Validate serial BCD digits` | 逐行列出实际的变量提取代码 |
+| 半条件省略 | `X < MIN \|\| > MAX` | `X < MIN \|\| X > MAX`（两侧都写完整变量） |
+
+**验证命令**：
+```bash
+# 检查流程图中是否存在简写
+grep -n '\.\.\.' swdd/{模块名}/img/*_Flowchart.mmd
+# 应该无输出。如果有 "..." 就是简写。
+```
+
+**原因**：详设文档是代码审查和测试的基准，简写会导致：
+1. 审查人员无法确认是否与源码一致
+2. 测试人员无法依据流程图编写完整测试用例
+3. 后续维护时无法判断简写代表的具体内容
 
 ### 经验教训：赋值语句不重复原则 ⚠️
 
@@ -380,7 +467,10 @@ Reference to "BBS_SPA3 Calibration Parameter Table"
 - 本模块调用内部函数或下层模块时，被调用者需要 activate/deactivate
 - ⚠️ **特别注意**：主函数（如 AINCU_vidMainFunction）的生命周期必须贯穿整个状态机，不能在中间某个状态后就结束！deactivate 应该在整个函数执行完毕后才出现
 - ⚠️ **不要使用 `return` 关键字**：PlantUML 的 return 会终止整个生命周期，导致后续状态无法显示
-- ✅ **正确做法**：使用 `--> 箭头` 显式画返回箭头，例如 `MainFunc --> HTOS : return`，这样可以显示返回但保持生命周期连续
+- ✅ **void函数返回规则（重要！）**：
+  - 如果被调用函数的返回类型是 **void**，**不需要画返回箭头**
+  - 例如：`HRTE_vidSetPortHBridge_NSleep()` 是 void 函数，调用时只需 `activate` / `deactivate`，不需要 `--> return`
+  - 只有**非void函数**（有返回值）才需要画返回箭头
 - ⚠️ **同一状态内的多个条件分支必须使用 `alt/else/end` 结构**，不能使用多个独立的 `alt/end`，否则会导致生命周期线显示不正确
 - ⚠️ **不要把数据数组误认为外部模块**：例如 "Calibration" 通常只是从 Calibration_Data_Array 读取数据的内部操作，不是外部模块。必须通过 grep 源代码确认是否有实际的外部模块调用
 - 示例：
@@ -610,6 +700,23 @@ Establish bidirectional traceability relationships between software architecture
       - 正常情况：矩形框只有一条出边连接到下一个节点
       - 如果矩形框有两条出边，需要检查是否错误地将两个独立if画成了if-else
       - 独立if的正确画法：第一个if的Y分支执行完后，需要额外一条线连接到第二个if的入口（如 `ArmedToTriggered --> ArmedDisarmCheck`），但这是**从第一个if的矩形框连接到第二个if的判断框**，而不是矩形框本身有两条分支
+- [ ] **ASSERT 必须作为判断分支（必做）**：
+  - 源码中的 `ASSERT(条件)` 必须在流程图中体现为判断菱形框
+  - 判断框文本格式：`ASSERT:<br/>条件表达式`
+  - Y 分支：条件成立，继续正常流程
+  - N 分支：连接到 `ASSERT failure` 处理框 → End
+  - 验证命令：`grep -n "ASSERT(" *_prg.c` 对照 `grep -i "ASSERT" *_Flowchart.mmd`
+- [ ] **switch-case 分支必须全部编号（必做）**：
+  - 每个 case 值和 default 都必须有编号，格式 `-->|"N) case值"|`
+  - 判断框文本使用 `switch(变量名)` 格式
+  - 编号与 if/else 判断分支统一连续递增
+  - 验证命令：`grep -E '-->\|"[^0-9]' swdd/{模块名}/img/*_Flowchart.mmd`（应无输出）
+- [ ] **禁止任何形式的简写/缩写（必做）**：
+  - 禁止 `...` 省略前缀、参数、中间调用
+  - 禁止范围简写如 `Nr1..Nr4`、`[0..3]`、`u8Index1..7`
+  - 禁止概括性描述如 `Any digit > 0x09?`、`Validate BCD digits`
+  - 禁止半条件省略如 `< MIN || > MAX`（两侧都要写完整变量名）
+  - 验证命令：`grep -n '\.\.\.' swdd/{模块名}/img/*_Flowchart.mmd`（应无输出）
 - [ ] **流程图不得简化或编造（必做）**：
   - 必须对照源代码逐行检查流程图
   - 空函数就是空函数，不能添加虚构步骤
