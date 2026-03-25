@@ -421,6 +421,12 @@ Main technical points and implementation methods of the {模块名} module:
 - 移除死代码（空函数、未被调用的函数）
 - 外部模块必须与本模块函数有连线
 - **双向检查**：外部模块→本模块，本模块→外部模块
+- **宏定义函数必须追踪完整调用链（重要！）**：
+  - 如果函数是宏定义（如 `#define HPWM_vidPwmInit DRTE_vidPwmInit`），必须沿 RTE 宏链向上追踪到实际调用者
+  - 追踪路径：DRTE→HRTE→SRTE→SMIC_cfg.h→SMIC_prg.c（或其他实际调用点）
+  - 静态图中必须画出"实际调用者 --> 宏函数"的连线
+  - 示例：`SMIC_vidPwmInit()` → `SRTE_vidPwmInit` → `HRTE_vidPwmInit` → `HPWM_vidPwmInit`，静态图中画 `SMIC --> vidPwmInit`
+  - **不能因为函数是宏就省略上游调用连线**
 
 #### 2.4.2 Component Overview Table
 
@@ -505,6 +511,10 @@ Reference to "BBS_SPA3 Calibration Parameter Table"
 - **必须逐行扫描本模块的 `*_prg.c` 源文件**
 - 确保所有函数调用（对外部模块、内部函数、下层BSW的调用）都要体现在动态图中
 - 不能遗漏任何实际被编译执行的函数调用
+- **宏定义的External函数也必须在动态图中体现（重要！）**：
+  - 如果函数通过宏链被外部模块调用（如 SMIC → SRTE → HRTE → HPWM_vidPwmInit），动态图中必须画出该调用
+  - 检查方法：遍历 Component Overview Table 中所有 External 函数，逐一确认每个函数在动态图中都有对应的调用场景
+  - 特别注意 Init/DeInit 类宏函数，它们通常在 System Initialization 阶段被调用，容易遗漏
 
 **⚠️ 忽略未被编译的代码**
 - 条件编译 `#if`、`#ifdef`、`#ifndef` 等不生效的分支不需要体现
@@ -553,6 +563,13 @@ Reference to "BBS_SPA3 Calibration Parameter Table"
   deactivate HRTE
   deactivate IntDiag
   ```
+
+**PlantUML换行符规则（重要！）：**
+- PlantUML 序列图中的消息标签换行必须用 `\n`，**禁止使用 `<br/>`**
+- `<br/>` 在 PlantUML 中会被当作纯文本渲染出来
+- Mermaid flowchart 中换行仍使用 `<br/>`（Mermaid 语法正确支持）
+- 示例：`A -> B : funcName(param1,\nparam2,\nparam3)` ✅
+- 错误：`A -> B : funcName(param1,<br/>param2,<br/>param3)` ❌
 
 **PlantUML样式设置（必须在图开头添加）：**
 ```
