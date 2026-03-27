@@ -191,6 +191,18 @@ grep -rn "函数名" BBS_K311_APP/src/ BBS_K311_APP/MCAL/ --include="*.c"
 # 仅在注释中出现不算调用（如 //DESC_vidStorNewRsn(u8FaultData);）
 ```
 
+**⚠️ 调用方有效性验证（极其重要！）：**
+- grep 找到调用方后，**必须检查调用方所在的上下文是否有效**：
+  - 调用方在 `#if 0` 块内 → 无效（如 `ADESC_u8GetDvLinGroup` 唯一调用在 LinIf.c 的 `#if 0` 块内）
+  - 调用方在 `#ifdef MACRO` 块内且宏未定义 → 无效
+  - 调用方被 `//` 或 `/* */` 注释掉 → 无效
+  - 只有调用方在正常编译路径中才算有效调用
+- **验证命令**：找到调用方后，查看其前后 5 行上下文，确认不在条件编译或注释块内：
+  ```bash
+  grep -n -B5 "函数名" BBS_K311_APP/src/Source/BSW/BSW_PKG/LinIf/LinIf.c
+  # 检查前面是否有 #if 0 / #ifdef 未定义宏
+  ```
+
 **注意**：
 - 始终编译的函数（`#ifdef` 块外面的）且有调用方的正常写入
 - RTE 宏链（DRTE→HRTE→SRTE→SMIC）必须追踪到底，不能只看直接调用
@@ -221,6 +233,48 @@ grep '\*\|\.\.\./' swdd/{模块名}/img/*Static_Diagram*.mmd
 # 对比函数数量
 grep -c '^\|' swdd/{模块名}/BBS_K311_APP_*_EN.md | head -5  # 表格行数
 grep -c '"\w' swdd/{模块名}/img/*Static_Diagram*.mmd  # 节点数
+```
+
+### 删除函数后必须全局重编号（重要！）
+
+**规则**：从 SWDD 中移除一个函数后，必须同步更新文档中**所有**编号，不能只改紧邻的一个。
+
+**必须更新的编号清单：**
+
+| 项目 | 格式 | 示例 |
+|------|------|------|
+| 1. 章节标题 | `#### 2.7.X 函数名` / `#### 2.8.X 函数名` | 2.7.4→2.7.3, 2.7.5→2.7.4, ... |
+| 2. Figure 引用 | `**Figure 2-7-X: 函数名 Flowchart**` | Figure 2-7-4→2-7-3, ... |
+| 3. Unit ID | `ADESC_unit_XX` | unit_04→unit_03, unit_05→unit_04, ... |
+
+**⚠️ 禁止手动逐个替换** — 必须使用脚本批量处理，避免遗漏：
+
+```python
+import re
+# 重编号章节标题
+ext_counter = 0
+for i, line in enumerate(lines):
+    m = re.match(r'^(#### 2\.(7|8))\.\d+ (.+)$', line)
+    if m:
+        section = m.group(2)
+        if section == '7':
+            ext_counter += 1
+            lines[i] = f'{m.group(1)}.{ext_counter} {m.group(3)}'
+
+# 重编号 Figure 引用
+ext_fig = 0
+def fix_figure(match):
+    global ext_fig
+    ext_fig += 1
+    return f'**Figure 2-7-{ext_fig}: {match.group(2)}'
+content = re.sub(r'\*\*Figure 2-(7)-\d+: (.+)', fix_figure, content)
+```
+
+**验证命令**：
+```bash
+# 检查章节编号是否连续
+grep -n "^#### 2.7" swdd/{模块名}/*.md | awk -F'.' '{print $NF}' | awk '{print $1}' | sort -n | uniq -d
+# 有输出说明有重复编号
 ```
 
 ### 经验教训：赋值语句不重复原则 ⚠️
@@ -1311,5 +1365,54 @@ MD文档中的表格必须符合标准Markdown格式：
 │   ├── {模块名}_{ExternalFunc}_Flowchart.png
 │   ├── {模块名}_{InternalFunc}_Flowchart.mmd
 │   └── {模块名}_{InternalFunc}_Flowchart.png
-└── BBS_K311_APP_{模块名}_Software_Detailed_Design_Document_EN.md
+├── {项目前缀}_{模块名}_Software_Detailed_Design_Document_EN.md
+└── {项目前缀}_{模块名}_Software_Detailed_Design_Document_EN.docx
+```
+
+## 工具集成
+
+本 skill 自带两个通用脚本，位于 `~/.claude/skills/swdd-generator/scripts/`，可在任意项目中使用。
+
+### 自带脚本
+
+| 脚本 | 用途 | 命令 |
+|------|------|------|
+| `md_to_docx.py` | MD → DOCX 转换（自动多级标题编号、嵌入 PNG 图片） | `python ~/.claude/skills/swdd-generator/scripts/md_to_docx.py --swdd-root ./swdd [模块名]` |
+| `extract_diagrams.py` | 从 MD 提取 mermaid/plantuml 并渲染 PNG | `python ~/.claude/skills/swdd-generator/scripts/extract_diagrams.py --swdd-root ./swdd --module 模块名` |
+
+### 外部工具依赖
+
+详细安装指南见 [SETUP.md](SETUP.md)。
+
+| 工具 | 用途 | 环境变量 |
+|------|------|----------|
+| Java 11+ | 运行 PlantUML | - |
+| PlantUML jar | 渲染 .puml → .png | `PLANTUML_JAR` |
+| Graphviz (dot) | PlantUML 渲染非序列图依赖 | `GRAPHVIZ_DOT`（可选） |
+| Node.js 18+ / npm | 运行 mermaid-cli | - |
+| @mermaid-js/mermaid-cli | 渲染 .mmd → .png | `PUPPETEER_EXECUTABLE_PATH`（可选） |
+| Python 3.9+ | 运行脚本 | - |
+| python-docx, Pillow | Python 包 | `pip install -r ~/.claude/skills/swdd-generator/requirements.txt` |
+
+### SWDD 生成完整工作流
+
+1. **生成 MD**：Claude 根据源码分析生成 SWDD markdown 文件
+2. **提取并渲染图表**：
+   ```bash
+   python ~/.claude/skills/swdd-generator/scripts/extract_diagrams.py --swdd-root ./swdd --module 模块名
+   ```
+3. **生成 DOCX**：
+   ```bash
+   python ~/.claude/skills/swdd-generator/scripts/md_to_docx.py --swdd-root ./swdd 模块名
+   ```
+
+### 新项目启动检查清单
+
+在新项目/新电脑使用前，验证以下环境：
+```bash
+java -version                          # Java 11+
+java -jar $PLANTUML_JAR -version       # PlantUML
+dot -V                                 # Graphviz
+npx @mermaid-js/mermaid-cli -V         # Mermaid CLI
+python -c "import docx; import PIL; print('OK')"  # Python 包
 ```
