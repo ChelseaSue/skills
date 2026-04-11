@@ -1,0 +1,23 @@
+{
+  "skill_name": "stakeholder-requirements-extractor",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我把 BBS_相关方需求分析表.xlsx 里的相关方输入文档清单先筛出来，H列是“是”的都要处理。文档里既有 PDF 也有 xls/xlsx compliance matrix。请把每个章节、小标题、编号项都整理成条目，回填到“相关方需求分析表”。",
+      "expected_output": "能识别适用文档，纳入 matrix 文件，按标题/信息/需求拆条，并回填 Excel 模板。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "OSS-SOW.pdf 这种普通提取拿不到正文的文件，也要尝试 OCR 或版式兜底。像 6. Coding Rules 下面的 10 条，必须拆成标题 + 10 个子项，不能合并成两三条。",
+      "expected_output": "会启用 OCR/版式兜底，并把编号章节正确展开成条目。",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "SWSOW A - 2.1.xls 这种矩阵文件不要忽略，只忽略 dbc 和 ldf。标题、说明、末级 requirement 行都要保留。类型是标题或信息时，类别和相关方ID都留空。",
+      "expected_output": "会保留矩阵类 Excel，忽略 dbc/ldf，并正确处理类型、类别、相关方ID 的联动规则。",
+      "files": []
+    }
+  ]
+}

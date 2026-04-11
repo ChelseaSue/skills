@@ -680,11 +680,50 @@ skinparam roundcorner 10
 | Prototype | void func(void) |
 | Location | xxx.c |
 | Function Description | 功能描述 |
-| Complexity | 1-5 |
-| Importance | 1-5 |
-| Priority | (计算值) |
-| Verification Criteria | Unit Test |
+| Complexity | 1-5（见下方复杂度定义表） |
+| Importance | 1-5（见下方重要度定义表） |
+| Priority | (计算值 = Complexity × Importance) |
+| Calls Func | 本函数调用的所有函数（逗号分隔） |
+| Calling Func | 调用本函数的所有函数/位置（逗号分隔） |
+| Storage alloc | 本函数的变量/数组存储分配说明（类型、大小、作用域） |
+| constraint | 本函数运行中所受到的限制条件（调用顺序、前置依赖、中断上下文等） |
+| Non-function | 本函数的非功能性需求（执行时间、重入性、中断安全等） |
+| Branch No | 分支数量（判断分支总数，0表示无分支的顺序执行） |
+| Verification Criteria | Unit Verification |
 ```
+
+**部分字段填写说明：**
+
+| 字段 | 填写要求 | 示例 |
+|------|---------|------|
+| **Calls Func** | 列出本函数体内直接调用的所有函数名，用逗号分隔；宏函数写宏名并标注实际映射（如 `SMIC_vidGptInit (macro -> Gpt_Init)`）；无调用写 `None` | `vidBistModeInit, vidNominalModeInit, vidRecoveryModeInit` |
+| **Calling Func** | 列出项目中调用本函数的所有位置，用逗号分隔；通过宏链调用需标注（如 `SMIC_vidCallModesManagement (via SMIC_vidASPUInit macro)`）；从 main.c 调用写 `main.c`；从中断调用写 `GPT ISR` | `SMIC_vidCallStdInit` |
+| **Storage alloc** | 列出本函数使用的局部变量和修改的全局变量，标注类型和大小；无变量写 `None` | `u8 u8IndexTaskLoc (local, 1 byte loop counter)` |
+| **constraint** | 说明调用顺序约束、前置条件、中断上下文限制等 | `Must be called after MCAL init; called from interrupt context` |
+| **Non-function** | 说明执行时间、重入性、中断安全性、循环次数等非功能性要求 | `Loop execution time proportional to TASK_NUMBER; interrupt-safe via critical section` |
+| **Branch No** | 统计函数中的判断分支数（if/else if/else/switch-case/for/while 条件），0 表示纯顺序执行 |
+
+**单元重要程度定义（Importance）：**
+
+| 重要度 | 描述 |
+|--------|------|
+| 5 | 如果此单元发生错误将引起程序崩溃、无法启动；或引起重要功能流程无法贯通；或引起数据丢失、或导致错误的数据 |
+| 4 | 如果此单元发生错误将导致重要功能不可用；或将导致功能实现不符合需求 |
+| 3 | 如果此单元发生错误，影响主要功能不可用；或功能项与需求将产生重大偏差 |
+| 2 | 如果此单元发生错误，功能项与需求将产生误差；或造成错误反馈引起用户理解歧义，导致错误操作 |
+| 1 | 如果此单元发生错误，将产生提示上的误差 |
+
+**单元复杂程度定义（Complexity）：**
+
+| 复杂度 | 描述 |
+|--------|------|
+| 5 | 单元分支 >= 5 个；或代码嵌套层次 >= 3 |
+| 4 | 单元分支 4 个；或存在 3 层嵌套 |
+| 3 | 单元分支 3 个；或存在 2 层嵌套 |
+| 2 | 单元分支 2 个 |
+| 1 | 单元分支 1 个（含无分支的顺序执行） |
+
+> **注意**：Complexity 应与 Branch No 字段一致。Branch No 是具体分支数，Complexity 是按上表映射后的等级。例如 Branch No = 7 → Complexity = 5。
 
 **Parameters：**
 - 无参数：`No input parameters and no return value`
