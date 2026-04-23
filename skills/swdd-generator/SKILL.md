@@ -163,7 +163,7 @@ grep -n '\.\.\.' swdd/{模块名}/img/*_Flowchart.mmd
 |------|------|------|
 | 1. 条件编译未启用 | `#ifdef MACRO` 块内且该宏未 `#define`；`#if 0` 块内 | `#ifdef DMEM_FLS_FUNCTION_ENABLE` 包裹的 `DMEM_u8BlankCheck` |
 | 2. 代码被注释 | 函数体、extern 声明或调用处被 `//` 或 `/* */` 注释掉 | `// extern void ADESC_vidDisable48VOptRsnInit()` |
-| 3. 定义了但无调用方 | 函数存在于 .c 文件中，但整个项目中无任何地方调用它 | `DESC_vidStorNewRsn` 唯一调用被注释掉；`DESC_u32SwitchU32` 唯一调用方在未编译的 `#ifdef` 块中 |
+| 3. 定义了但无有效调用路径 | 函数存在于 .c 文件中，但**所有潜在调用路径上都缺少一环有效代码**（直接调用、函数指针/地址存入数组/结构体、通过 `section` 段被硬件间接读取 —— 任一路径需全链路均在有效编译路径中，缺一环即作废） | `DESC_vidStorNewRsn` 唯一直接调用被注释；`MCU_vidFastWkupBootAddress` 仅通过 `FastWkupBootVectorTable[1]` 间接引用，但该表写入 `DCMRWF5` 的代码被 `#if 0` 包裹 ⇒ 硬件路径作废 ⇒ 死代码 |
 
 **检查步骤**：
 
@@ -182,30 +182,30 @@ grep -n "//.*extern" BBS_K311_APP/src/Source/{层}/{模块名}/*_int.h
 ```
 
 **类型3 - 定义了但无调用方（最重要！）：**
+
+**⚠️ 必须使用 cscope 而非 grep 做调用方查询。** 详细命令见 [references/cscope_usage.md](references/cscope_usage.md)。
+
 ```bash
-# 对每个函数，在整个项目中搜索调用方
-grep -rn "函数名" BBS_K311_APP/src/ BBS_K311_APP/MCAL/ --include="*.c"
+# 查找某函数的所有调用者（caller）
+cscope -dL -3 函数名
+# 无输出 = 没有调用方 = 死代码候选
 # 注意：必须追踪完整的 RTE 宏链！
 # 例如 HPWM_vidPwmInit → DRTE_vidPwmInit → HRTE_vidPwmInit → SRTE_vidPwmInit → SMIC_vidPwmInit
-# 只有链条末端的宏在某个 .c 文件中被调用，才算有调用方
-# 仅在注释中出现不算调用（如 //DESC_vidStorNewRsn(u8FaultData);）
+# 逐层 cscope -dL -3 向上追踪，直到链条末端仍无调用方，才算死代码
 ```
 
 **⚠️ 调用方有效性验证（极其重要！）：**
-- grep 找到调用方后，**必须检查调用方所在的上下文是否有效**：
+- cscope 找到调用方后，**必须检查调用方所在的上下文是否有效**：
   - 调用方在 `#if 0` 块内 → 无效（如 `ADESC_u8GetDvLinGroup` 唯一调用在 LinIf.c 的 `#if 0` 块内）
   - 调用方在 `#ifdef MACRO` 块内且宏未定义 → 无效
   - 调用方被 `//` 或 `/* */` 注释掉 → 无效
   - 只有调用方在正常编译路径中才算有效调用
-- **验证命令**：找到调用方后，查看其前后 5 行上下文，确认不在条件编译或注释块内：
-  ```bash
-  grep -n -B5 "函数名" BBS_K311_APP/src/Source/BSW/BSW_PKG/LinIf/LinIf.c
-  # 检查前面是否有 #if 0 / #ifdef 未定义宏
-  ```
+- **验证方法**：cscope 输出中已附带文件路径和行号（格式 `<文件> <函数> <行号> <源码>`），用 Read 工具打开对应位置前后 5~10 行，人工确认不在条件编译/注释块内。cscope 本身不理解 `#if 0` 等非启用分支。
 
 **注意**：
 - 始终编译的函数（`#ifdef` 块外面的）且有调用方的正常写入
 - RTE 宏链（DRTE→HRTE→SRTE→SMIC）必须追踪到底，不能只看直接调用
+- **间接调用路径**（函数指针数组、地址存入 `section` 段被硬件读取、callback 注册表等）同样要求**全链路在有效编译路径中**：cscope 找到的取地址点（`-0` 查所有引用）必须逐一追踪到最终激活点（寄存器写入/硬件段配置/注册函数调用），任一环节被 `#if 0` / 注释 / 未定义宏打断，该路径作废；所有路径均作废 ⇒ 死代码。`section(...)` + linker `KEEP` 只保证 bytes 留在 flash，不代表运行时可达。
 
 ### 静态图必须展开所有函数，禁止通配符分组（重要！）
 
@@ -318,45 +318,32 @@ done
 
 ---
 
-## 文档结构（必须严格按此格式）
+## 函数关系分析工具 — cscope（必用）
 
-```
-1 Overview
-    1.1 Purpose
-    1.2 Scope
-    1.3 Reader
-    1.4 Reference
-    1.5 Terminology and Abbreviation
+**规则**：所有函数定义查找、引用查找、调用关系（caller/callee）分析必须使用 `cscope`，**禁止用 `grep -rn "函数名"` 做调用分析**。grep 仅用于非 C 语义的搜索（markdown/mmd/puml 格式校验、`#ifdef` 宏名扫描等）。
 
-2 {模块名} Component Design
-    2.1 Component Introduction
-    2.2 Main Function Description
-    2.3 Component Files
-    2.4 Static Diagram
-        2.4.1 Static Diagram Picture
-        2.4.2 Component Overview Table
-    2.5 Data Design
-        2.5.1 Global Data
-        2.5.2 Data Structure
-        2.5.3 Enum
-        2.5.4 Constant
-        2.5.5 Calibration
-    2.6 Dynamic Behavior
-    2.7 External Function
-        2.7.1 {函数1}
-        2.7.2 {函数2}
-        ...
-    2.8 Internal Function
-        2.8.1 {函数1}
-        2.8.2 {函数2}
-        ...
+**前置条件**：项目根目录必须存在最新的 cscope 数据库（`cscope.out`）。源码变更后必须 `cscope -bqk` 重建。
 
-3 Appendix
-    3.1 Design Methods
-    3.2 Design Guidelines
-    3.3 Traceability and Consistency Requirements
-    3.4 Unit Verification Criteria
-```
+**核心命令速查**（全平台一致）：
+- `cscope -dL -1 <函数>` 查定义
+- `cscope -dL -2 <函数>` 查 callee（本函数调用了谁）
+- `cscope -dL -3 <函数>` 查 caller（谁调用了本函数）
+- `cscope -dL -0 <符号>` 查所有引用
+
+**必须人工补救的 cscope 限制**：
+1. cscope **不理解 `#if 0` / `#ifdef`** 未启用分支 —— 找到 caller 后必须 Read 上下文确认是否在有效编译路径内
+2. **宏函数链**（如 DRTE→HRTE→SRTE→SMIC）必须手动沿链逐层 `-3` 追踪
+3. **函数指针 / 回调**需通过注册点手动关联
+
+**详细使用说明**（数据库构建跨平台脚本、完整命令表、SWDD 用例、跨平台细节）：见 [references/cscope_usage.md](references/cscope_usage.md)。安装步骤见 [SETUP.md](SETUP.md) 第 6 节。
+
+---
+
+## 文档结构
+
+**标题层级与章节清单是唯一权威，见：** [references/SWDD_Mandatory_Requirements.md § 1 总体原则](references/SWDD_Mandatory_Requirements.md#1-总体原则)
+
+下方 "各章节详细要求" 仅说明每一节应填什么内容，**不再重复层级定义**。若层级与 Mandatory Requirements 冲突，以 Mandatory Requirements 为准。
 
 ---
 
@@ -471,7 +458,7 @@ Main technical points and implementation methods of the {模块名} module:
 - 开始/结束节点：使用 `Start([Start])` / `End([End])`
 
 **关键要求：**
-- 通过grep搜索确认每个函数的调用者
+- 通过 **cscope**（非 grep）确认每个函数的调用者：`cscope -dL -3 <函数名>` 列出 caller；`cscope -dL -2 <函数名>` 列出 callee。详见 [references/cscope_usage.md](references/cscope_usage.md)
 - 移除死代码（空函数、未被调用的函数）
 - 外部模块必须与本模块函数有连线
 - **双向检查**：外部模块→本模块，本模块→外部模块
@@ -633,8 +620,12 @@ skinparam participantPadding 10
 skinparam boxPadding 10
 skinparam sequenceArrowThickness 2
 skinparam roundcorner 10
+skinparam SequenceGroupBodyBackgroundColor transparent
+skinparam SequenceGroupBackgroundColor transparent
 ...
 ```
+
+**⚠️ alt/opt/group 框必须透明背景**：上面两条 `SequenceGroup*BackgroundColor transparent` 是**强制的**。PlantUML 默认会给 alt/opt/group 框体填白色、给标签头填浅灰（#EEEEEE），这会**遮盖下方的状态色块**（黄 #FFEB99 / 蓝 #A8D4FF / 绿 #98FB98），导致动态图里看不出当前调用属于哪个状态分区。设为 transparent 后，alt 框体只剩边框，状态色块能透过来。**生成新 puml 时必须包含这两条；改老 puml 也要补上。**
 
 **⚠️ 强制检查清单（必须完成所有项才能编写动态图）：**
 
@@ -830,7 +821,8 @@ Establish bidirectional traceability relationships between software architecture
 - [ ] 死代码：未被调用或空函数（需移除）
 
 ### 调用关系检查
-- [ ] 使用grep确认每个函数的实际调用者
+- [ ] **使用 cscope（非 grep）确认每个函数的实际调用者**：`cscope -dL -3 <函数名>` 查 caller，`cscope -dL -2 <函数名>` 查 callee，详见 [references/cscope_usage.md](references/cscope_usage.md)
+- [ ] 数据库已最新构建（`cscope -bqk`）
 - [ ] 明确写出具体模块名，不用"其他模块"等模糊表述
 
 ### 图表检查
@@ -1425,6 +1417,7 @@ MD文档中的表格必须符合标准Markdown格式：
 
 | 工具 | 用途 | 环境变量 |
 |------|------|----------|
+| **cscope** | **C 函数定义/引用/调用关系分析（查定义、查引用、caller/callee）** | **-**（需先在项目根目录执行 `cscope -bqk` 构建数据库） |
 | Java 11+ | 运行 PlantUML | - |
 | PlantUML jar | 渲染 .puml → .png | `PLANTUML_JAR` |
 | Graphviz (dot) | PlantUML 渲染非序列图依赖 | `GRAPHVIZ_DOT`（可选） |
@@ -1449,9 +1442,18 @@ MD文档中的表格必须符合标准Markdown格式：
 
 在新项目/新电脑使用前，验证以下环境：
 ```bash
+cscope --version                       # cscope（必须）
 java -version                          # Java 11+
 java -jar $PLANTUML_JAR -version       # PlantUML
 dot -V                                 # Graphviz
 npx @mermaid-js/mermaid-cli -V         # Mermaid CLI
 python -c "import docx; import PIL; print('OK')"  # Python 包
 ```
+
+**首次使用前必做 — 构建 cscope 数据库**（在项目根目录执行）：
+```bash
+# Linux / macOS / Git Bash / WSL / MSYS2
+find BBS_K311_APP/src BBS_K311_APP/MCAL -type f \( -name "*.c" -o -name "*.h" \) > cscope.files
+cscope -bqk
+```
+Windows PowerShell 版本及完整说明参见 [references/cscope_usage.md](references/cscope_usage.md)。源码变更后必须重建。

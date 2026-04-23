@@ -9,6 +9,49 @@
 - **禁止简化**：不得使用 “Same pattern as…”、“omitted for brevity”、“Details omitted” 等概括性描述替代具体内容。
 - **一一对应**：文档中的每个对外/对内接口、每张图都必须与源码（如 `*_int.h`、`*_prg.c`）一一对应，且逻辑一致。
 - **完整覆盖**：模块内所有在 `*_int.h` 中声明的外部接口，以及文档 2.4 总览表中列出的 Unit，都必须在 2.7/2.8 中有对应的说明与**完整 Mermaid 流程图**。
+- **标题层级固定（唯一权威清单）**：文档必须严格按下方树状结构编写，不得省略文档总标题，也不得整体上移/下移一级。错层会导致 Word 导出编号错误，并影响流程图 PNG 替换识别。
+
+```md
+# BBS_K311_APP {模块名} Software Detailed Design Document
+
+## 1 Overview
+### 1.1 Purpose
+### 1.2 Scope
+### 1.3 Reader
+### 1.4 Reference
+### 1.5 Terminology and Abbreviation
+
+## 2 {模块名} Component Design
+### 2.1 Component Introduction
+### 2.2 Main Function Description
+### 2.3 Component Files
+### 2.4 Static Diagram
+#### 2.4.1 Static Diagram Picture
+#### 2.4.2 Component Overview Table
+### 2.5 Data Design
+#### 2.5.1 Global Data
+#### 2.5.2 Data Structure
+#### 2.5.3 Enum
+#### 2.5.4 Constant
+#### 2.5.5 Calibration
+### 2.6 Dynamic Behavior
+### 2.7 External Function
+#### 2.7.1 {函数1}
+#### 2.7.2 {函数2}
+...
+### 2.8 Internal Function
+#### 2.8.1 {函数1}
+#### 2.8.2 {函数2}
+...
+
+## 3 Appendix
+### 3.1 Design Methods
+### 3.2 Design Guidelines
+### 3.3 Traceability and Consistency Requirements
+### 3.4 Unit Verification Criteria
+```
+
+- **禁止**：不得让文档从 `# 1 Overview` 开始（缺文档总标题）；不得把 `2.7.1/2.8.1` 写成 `###`；不得在 Mermaid/PlantUML 代码块前后遗漏对应的 `####` 函数章节标题。
 
 ---
 

@@ -16,6 +16,9 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import cairosvg
+from PIL import Image
+
 
 def find_chrome() -> str | None:
     """Find Chrome/Chromium for Puppeteer (used by mermaid-cli)."""
@@ -99,6 +102,8 @@ def extract_blocks(md_path: Path) -> list[tuple[str, str, str]]:
             buf.append(lines[i])
             i += 1
         code = "\n".join(buf).rstrip() + "\n"
+        if lang == "plantuml":
+            code = normalize_plantuml_code(code)
         diagram_name = None
         search_end = min(len(lines), i + 60)
         for j in range(i + 1, search_end):
@@ -125,6 +130,37 @@ def extract_blocks(md_path: Path) -> list[tuple[str, str, str]]:
     return blocks
 
 
+def normalize_plantuml_code(code: str) -> str:
+    """Ensure dynamic PlantUML diagrams keep alt/opt/group backgrounds transparent."""
+    required = [
+        'skinparam SequenceGroupBodyBackgroundColor transparent',
+        'skinparam SequenceGroupBackgroundColor transparent',
+    ]
+    lines = code.splitlines()
+    if not lines:
+        return code
+
+    missing = [line for line in required if line not in lines]
+    if not missing:
+        return code if code.endswith("\n") else code + "\n"
+
+    insert_at = None
+    for idx, line in enumerate(lines):
+        if line.startswith('skinparam roundcorner '):
+            insert_at = idx + 1
+            break
+    if insert_at is None:
+        for idx, line in enumerate(lines):
+            if line.strip() == '@startuml':
+                insert_at = idx + 1
+                break
+    if insert_at is None:
+        insert_at = 0
+
+    lines[insert_at:insert_at] = missing
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def render_mermaid(mmd_file: Path, png_file: Path) -> None:
     """Render a Mermaid diagram to PNG using mermaid-cli."""
     env = os.environ.copy()
@@ -142,20 +178,33 @@ def render_mermaid(mmd_file: Path, png_file: Path) -> None:
 
 
 def render_plantuml(puml_file: Path, png_file: Path) -> None:
-    """Render a PlantUML diagram to PNG."""
+    """Render a PlantUML diagram via SVG to avoid large PNG truncation."""
     cmd = find_plantuml_cmd()
+    env = os.environ.copy()
+    java_opts = env.get("JAVA_TOOL_OPTIONS", "").strip()
+    headless_opt = "-Djava.awt.headless=true"
+    if headless_opt not in java_opts.split():
+        env["JAVA_TOOL_OPTIONS"] = f"{java_opts} {headless_opt}".strip()
+
+    svg_file = puml_file.with_suffix(".svg")
     subprocess.run(
-        cmd + ["-tpng", str(puml_file)],
+        cmd + ["-tsvg", str(puml_file)],
         check=True,
         text=True,
         capture_output=True,
         timeout=180,
+        env=env,
     )
-    generated = puml_file.with_suffix(".png")
-    if not generated.exists():
-        raise FileNotFoundError(f"PlantUML output missing: {generated}")
-    if generated != png_file:
-        generated.replace(png_file)
+    if not svg_file.exists():
+        raise FileNotFoundError(f"PlantUML SVG output missing: {svg_file}")
+
+    cairosvg.svg2png(url=str(svg_file), write_to=str(png_file))
+
+    with Image.open(png_file) as img:
+        if img.mode == "RGBA":
+            background = Image.new("RGB", img.size, (255, 255, 255))
+            background.paste(img, mask=img.split()[3])
+            background.save(png_file)
 
 
 def process_md(md_path: Path, render: bool = True) -> list[Path]:
