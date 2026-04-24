@@ -27,6 +27,7 @@ Get-ChildItem -Path BBS_K311_APP\src, BBS_K311_APP\MCAL -Recurse -Include *.c, *
 cscope -bqk
 ```
 
+
 命令说明：
 - `-b` 只建库不进入交互界面
 - `-q` 生成快速反向索引（`cscope.in.out` / `cscope.po.out`）

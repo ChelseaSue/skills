@@ -7,24 +7,121 @@ description: 软件详细设计文档（SWDD）生成工具。用于根据嵌入
 
 用于根据嵌入式模块源代码自动生成符合汽车电子行业ASPICE标准的软件详细设计文档。
 
+## §0 模块信息发现（每次生成 SWDD 的第 0 步，必须完成）
+
+本 skill 不假设任何固定项目名、目录结构或文件命名模式（如 `*_prg.c` / `*_int.h` 等 APP 层惯例）。开始生成前，按以下步骤**自动发现**模块信息：
+
+### 步骤 1 — 模块目录定位
+
+用户仅需提供 `{模块名}`（如 `ADIAP`、`AINCU`、`DSPI`）。skill 在工作区搜索同名目录：
+
+```bash
+find . -maxdepth 6 -type d -name "{模块名}" \
+    -not -path "*/swdd/*" \
+    -not -path "*/node_modules/*" \
+    -not -path "*/.git/*" \
+    -not -path "*/.vscode/*" \
+    -not -path "*/build/*" \
+    -not -path "*/Debug_*/*" \
+    -not -path "*/Release_*/*" 2>/dev/null
+```
+
+- **唯一命中** → 取该路径作为 `{模块路径}`
+- **多个命中** → 用 `AskUserQuestion` 让用户选择具体目录
+- **零命中** → 报错并要求用户手动提供 `{模块路径}` 完整相对路径
+
+### 步骤 2 — 派生其他参数
+
+从 `{模块路径}` 解析：
+
+| 占位符 | 派生方法 | 示例 |
+|--------|---------|------|
+| `{项目根}` | `{模块路径}` 第一段（顶层目录名） | `BBS_K311_APP` / `BBS_K311_SWDL` |
+| `{文档前缀}` | 默认同 `{项目根}` | `BBS_K311_APP` / `BBS_K311_SWDL` |
+| `{模块名}` | 用户输入，保持不变 | `AINCU` / `ADIAP` |
+
+`{文档前缀}` 极少需要与 `{项目根}` 不同；若项目有自定义约定，由用户在开始时明确指示覆盖默认值。
+
+### 步骤 3 — 源文件枚举（不对文件名做任何假设）
+
+```bash
+ls {模块路径}/*.c {模块路径}/*.h 2>/dev/null
+```
+
+**把命中的所有 `.c` 和 `.h` 文件一视同仁地当作本模块源文件**。不假设 `_prg.c` / `_int.h` / `_priv.h` / `_cfg.c` / `_cfg.h` 这套命名模板 —— ADIAP 模块就是反例：文件名是 `bl_desc.c` / `bl_desc.h` / `bl_desc_adapter.c` / `bl_desc_funcfg.h` 等，完全不符合 APP 惯例。
+
+### 步骤 4 — 语义角色推断（读内容，不读文件名）
+
+遍历步骤 3 枚举出的每个文件，根据**内容**推断用途：
+
+**`.c` 文件**：
+- 读前 50 行获取 header comment 的 `Description:` 字段
+- 如果有大量函数定义且本模块其他 `.c` 也调用它的函数 → 主实现
+- 如果只有一张 const 数组/配置表 → 配置数据
+
+**`.h` 文件**：判断公/私用**跨目录 include 扫描**，不看文件名后缀：
+```bash
+grep -rn '#include "{头文件名}"' {项目根}/ | grep -v "{模块路径}/"
+```
+- 有跨目录引用 → 对外 API 头文件（`External` 作用域）
+- 仅本目录内引用 → 私有头文件（`Internal` 作用域）
+
+**函数对外/内部分类**：通过 cscope 而不是通过头文件归属判断：
+```bash
+# 查某函数的所有调用者文件
+cscope -dL -3 函数名 | awk '{print $1}' | sort -u
+```
+- 所有调用者都在 `{模块路径}/` 下 → Internal
+- 有 `{模块路径}/` 之外的调用者 → External
+
+### 步骤 5 — 多源文件目录处理（子组件识别）
+
+当 `{模块路径}/*.c` 数量 ≥ 2 时，可能是多子组件目录（例：ADIAP = `bl_desc.c` + `bl_desc_adapter.c` + 相关 cfg 文件）。
+
+**处理流程**：
+1. 列出全部 `.c` 文件，用 `AskUserQuestion` 询问用户：视为单组件 vs 按子组件分组
+2. **不自动判断** —— 用户明确指示优先；cscope 分析两组 `.c` 之间几乎无直接调用只作为辅助线索
+3. 若确认为多子组件：
+   - **§2.3 文件表**：按子组件分组列出，每组前加一行子组件简述
+   - **§2.4.1 静态图**：每个子组件一个独立 `subgraph`（颜色区分），展示子组件间调用
+   - **§2.4.2 表**：`Unit ID` 用 `{模块名}_unit_NN` 连续编号（跨子组件连续）；`Component ID` 列可用 `{模块名}/{子组件}` 区分
+   - **§2.6 动态图**：若子组件间有调用链，用 `box` 分组
+   - **§2.7/2.8**：按子组件聚类相邻排列，**不拆章节**（仍用 `2.7.1 / 2.7.2 / ...` 连续编号）
+
+### 步骤 6 — cscope 数据库确认
+
+生成前确保 `cscope.out` 已覆盖所有相关项目目录。构建命令见本文件末尾 "新项目启动检查清单"。
+
+---
+
 ## 强制规范（必读，不得违反）
 
 **生成或修改任何 SWDD 前必须先阅读并遵守：** [references/SWDD_Mandatory_Requirements.md](references/SWDD_Mandatory_Requirements.md)
 
+### SWDD 正文必须由 LLM 直接编制（最高优先级）
+
+**禁止采用“先生成脚本、再由脚本批量生成文档正文”的方式创建或重编 SWDD。** SWDD 的章节文本、Mermaid 静态图/流程图源码、PlantUML 动态图源码、数据表格、函数属性表和 Process Description，必须由 LLM 基于源码、cscope 结果和本 skill 规则逐条推理后，直接写入目标 `.md` 文档。
+
+允许使用工具的边界：
+- **允许**：源码检索、cscope 分析、格式校验、图块抽取渲染、PNG 生成、DOCX 转换、编号一致性检查等验证/转换工具。
+- **禁止**：编写或运行会自动拼装 SWDD 正文、自动生成章节文本、自动生成 Mermaid/PlantUML 图源码、自动批量填表的文档生成脚本。
+- 若已有生成脚本输出与本 skill 冲突，必须以本 skill 为准直接修订 `.md`，不得通过调整生成脚本后重新生成正文来替代人工推理编制。
+
 **核心约束摘要：**
-1. **禁止简化**：不得使用 Same pattern、omitted for brevity、Details omitted 等概括替代具体内容。
-2. **一一对应**：每个对外/对内接口、每张图须与源码一致。
-3. **2.4 静态图**：须包含本模块全部对外接口及与 Callers/下层的连线；2.4.2 表与 2.7/2.8 一致无遗漏。
-4. **2.6 动态图**：须为 PlantUML 序列图；调用链完整，不得越级。
-5. **2.7/2.8**：每个函数必须有完整 Mermaid 流程图。
-6. **流程图分支编号**：每个判断出边必须用编号+右括号标注，格式 `-->|"1) Y"|` / `-->|"2) N"|`，禁止裸的 `"Y"`/`"N"`。**同一流程图内的所有分支必须连续编号**。
-7. **流程图代码语言**：流程图中处理框/判断框必须为实际代码，禁止自然语言或概括描述。
-8. **流程图与源码一一对应（重要！）**：
+1. **正文直接编制**：不得用文档生成脚本自动生成 SWDD 正文、图源码或表格；必须由 LLM 逐条推理后直接写入 `.md`。
+2. **禁止简化**：不得使用 Same pattern、omitted for brevity、Details omitted 等概括替代具体内容。
+3. **一一对应**：每个对外/对内接口、每张图须与源码一致。
+4. **2.4 静态图**：须包含本模块全部对外接口及与 Callers/下层的连线；2.4.2 表与 2.7/2.8 一致无遗漏。
+5. **2.6 动态图**：须为 PlantUML 序列图；调用链完整，不得越级。
+6. **2.7/2.8**：每个函数必须有完整 Mermaid 流程图。
+7. **流程图分支编号**：每个判断出边必须用编号+右括号标注，格式 `-->|"1) Y"|` / `-->|"2) N"|`，禁止裸的 `"Y"`/`"N"`。**同一流程图内的所有分支必须连续编号**。
+8. **流程图代码语言**：流程图中处理框/判断框必须为实际代码，禁止自然语言或概括描述。
+9. **流程图与源码一一对应（重要！）**：
    - 每个流程图必须与源代码逐行对应，不得简化或编造
    - 空函数就是空函数（只有`}`），不能添加任何虚构步骤
    - 变量名、函数调用、赋值语句必须与源码完全一致
    - 禁止添加源码中不存在的操作（如"Clr Alarm"、"Set Status"等泛化描述）
-9. **函数分类**：
+10. **函数分类**：
    - External函数：被外部模块实际调用
    - Internal函数：仅被本模块函数调用
 
@@ -119,7 +216,7 @@ flowchart TD
 **验证命令**：
 ```bash
 # 在源码中查找所有 ASSERT 调用
-grep -n "ASSERT(" BBS_K311_APP/src/Source/APP/{模块名}/*_prg.c
+grep -n "ASSERT(" {模块路径}/*.c
 # 在对应流程图中确认 ASSERT 作为判断框存在
 grep -i "ASSERT" swdd/{模块名}/img/*_Flowchart.mmd
 ```
@@ -170,15 +267,15 @@ grep -n '\.\.\.' swdd/{模块名}/img/*_Flowchart.mmd
 **类型1 - 条件编译未启用：**
 ```bash
 # 查找源码中所有 #ifdef / #if 0 块
-grep -n "#ifdef\|#ifndef\|#if 0" BBS_K311_APP/src/Source/{层}/{模块名}/*.[ch]
+grep -n "#ifdef\|#ifndef\|#if 0" {模块路径}/*.[ch]
 # 检查每个宏是否在项目中定义
-grep -r "#define 宏名" BBS_K311_APP/
+grep -r "#define 宏名" {项目根}/
 ```
 
 **类型2 - 代码被注释：**
 ```bash
 # 查找 int.h 中被注释掉的 extern 声明
-grep -n "//.*extern" BBS_K311_APP/src/Source/{层}/{模块名}/*_int.h
+grep -n "//.*extern" {模块路径}/*.h
 ```
 
 **类型3 - 定义了但无调用方（最重要！）：**
@@ -193,6 +290,25 @@ cscope -dL -3 函数名
 # 例如 HPWM_vidPwmInit → DRTE_vidPwmInit → HRTE_vidPwmInit → SRTE_vidPwmInit → SMIC_vidPwmInit
 # 逐层 cscope -dL -3 向上追踪，直到链条末端仍无调用方，才算死代码
 ```
+
+**⚠️ `cscope -3` 只有定义行的判定规则（重要！）：**
+
+`cscope -dL -3 函数名` 查询 caller 时，如果：
+- 无输出；或
+- 只有一条输出，且该输出是函数自身定义行/声明附近的伪 caller
+
+则不能视为存在实际调用方，应按“无直接调用方”处理，并继续执行：
+
+```bash
+cscope -dL -0 函数名
+```
+
+`-0` 结果判定规则：
+- 只包含 `extern` 声明和函数定义 → 死代码候选
+- 唯一取地址/注册点在 `//`、`/* */`、`#if 0`、未启用 `#ifdef` 中 → 死代码候选
+- 找到有效 callback 表、函数指针表、section 表注册点 → 继续追踪该注册点是否被有效使用，不能直接判死代码
+
+**典型模式**：某个诊断服务回调、通信回调、定时器通知或其他 callback 函数虽然仍有源码定义，但它唯一的 callback/DCM/函数指针配置表注册点被 `//`、`/* */` 注释掉，或被 `#if 0` / 未启用 `#ifdef` 屏蔽，则该函数没有有效运行路径，应按不可达函数处理。
 
 **⚠️ 调用方有效性验证（极其重要！）：**
 - cscope 找到调用方后，**必须检查调用方所在的上下文是否有效**：
@@ -231,7 +347,7 @@ cscope -dL -3 函数名
 grep '\*\|\.\.\./' swdd/{模块名}/img/*Static_Diagram*.mmd
 # 应该无输出
 # 对比函数数量
-grep -c '^\|' swdd/{模块名}/BBS_K311_APP_*_EN.md | head -5  # 表格行数
+grep -c '^\|' swdd/{模块名}/{文档前缀}_*_EN.md | head -5  # 表格行数
 grep -c '"\w' swdd/{模块名}/img/*Static_Diagram*.mmd  # 节点数
 ```
 
@@ -332,7 +448,7 @@ done
 
 **必须人工补救的 cscope 限制**：
 1. cscope **不理解 `#if 0` / `#ifdef`** 未启用分支 —— 找到 caller 后必须 Read 上下文确认是否在有效编译路径内
-2. **宏函数链**（如 DRTE→HRTE→SRTE→SMIC）必须手动沿链逐层 `-3` 追踪
+2. **宏函数链/适配层链**（如 API alias→RTE wrapper→HAL wrapper→实际调用点）必须手动沿链逐层 `-3` 追踪
 3. **函数指针 / 回调**需通过注册点手动关联
 
 **详细使用说明**（数据库构建跨平台脚本、完整命令表、SWDD 用例、跨平台细节）：见 [references/cscope_usage.md](references/cscope_usage.md)。安装步骤见 [SETUP.md](SETUP.md) 第 6 节。
@@ -429,18 +545,58 @@ Main technical points and implementation methods of the {模块名} module:
 
 ### 2.3 Component Files（组件文件）
 
-**重要：文件清单必须通过遍历模块目录下的实际文件生成！**
+**重要：文件清单必须通过遍历 `{模块路径}/*.c` 和 `{模块路径}/*.h` 的实际输出生成，一个文件一行，完全不对文件名做后缀假设！**
 
-表格格式：
+**生成步骤：**
+
+1. `ls {模块路径}/*.c {模块路径}/*.h` 得到实际文件列表
+2. 对每个文件，打开读前 50 行获取 header comment 中的 `Description:` 字段
+3. 若无 header comment，根据**文件内容**描述用途（参考下表），**不以文件名后缀反推角色**
+
+**内容驱动的描述写法（仅作为经验模板，不强制）：**
+
+| 文件内容特征 | 推荐描述 |
+|------------|---------|
+| 大量函数定义 + 状态机/主循环/处理逻辑 | 主要实现逻辑（The main implementation of the component's function） |
+| `extern` 声明 + typedef + 无函数体 + 被 `{模块路径}/` 之外的 `.c` 引用 | 对外接口头文件（The external interface header file） |
+| `extern`/`static` 声明 + 只被 `{模块路径}/` 内部引用 | 私有头文件（The private header file, containing declarations used only within this module） |
+| 大量 const 数组 / 配置表 / 标定数据 | 配置数据源文件 |
+| 大量 `#define` 开关 / 功能配置宏 | 功能配置头文件 |
+| 封装其他模块/驱动的适配层调用 | 适配层（子组件）实现 |
+
+**表格格式**：
+
 ```
 | No. | Filename | Description |
 |-----|----------|-------------|
-| 1 | {模块名}_prg.c | The implementation of the component's function. c file, containing definitions of all the functions that the module implements. |
-| 2 | {模块名}_int.h | The external interface header file, declaring functions and types that are exposed to other modules. |
-| 3 | {模块名}_priv.h | The private header file, containing internal declarations used only within this module. |
-| 4 | {模块名}_cfg.h | The configuration header file, containing module-specific configuration macros and constants. |
-| 5 | {模块名}_cfg.c | The configuration source file, containing module-specific configuration data. |
+| 1 | <实际文件名> | <根据 header comment 或内容特征填写的描述> |
+| 2 | ... | ... |
 ```
+
+**输出顺序（固定，保证 docx 转换稳定）**：
+1. 主实现 `.c`（通常一个；多子组件时按子组件聚类，组内主 `.c` 在前）
+2. 其它 `.c`（如 `_cfg.c` 等配置数据源文件）
+3. 对外 `.h`（`#include` 扫描确认被跨目录引用的）
+4. 私有 `.h`（`_priv.h` / 仅本目录内 include 的）
+5. 配置/功能开关 `.h`（`_cfg.h` / `_funcfg.h` 等，仅内部使用但属性是"配置"）
+
+例（DSPI）：`DSPI_prg.c` → `DSPI_cfg.c` → `DSPI_int.h` → `DSPI_priv.h` → `DSPI_cfg.h`。
+
+**示例（AINCU, APP 惯例命名）**：
+| No. | Filename | Description |
+|-----|----------|-------------|
+| 1 | AINCU_prg.c | 主要实现逻辑 |
+| 2 | AINCU_int.h | 对外接口头文件 |
+| 3 | AINCU_priv.h | 私有头文件 |
+| 4 | AINCU_cfg.h | 配置头文件 |
+| 5 | AINCU_cfg.c | 配置数据源文件 |
+
+**示例（ADIAP, bl_desc* 命名）**：12 个文件全部列出，每个都根据内容给出描述，不假设任何命名对应关系。
+
+**禁止**：
+- 不得跳过目录里实际存在的文件
+- 不得把不在目录里的文件（基于惯例想象）填进表
+- 不得按文件名后缀机械推断描述（如看到 `_prg.c` 就写"主实现"，而忽略实际内容）
 
 ---
 
@@ -549,7 +705,7 @@ Reference to "BBS_SPA3 Calibration Parameter Table"
 ⚠️ **禁止使用 `![xxx](img/xxx.png)` 格式插入动态图，必须使用代码块嵌入PlantUML源码**
 
 **⚠️ 重要：函数调用完整性要求**
-- **必须逐行扫描本模块的 `*_prg.c` 源文件**
+- **必须逐行扫描本模块的所有 `.c` 源文件**（`ls {模块路径}/*.c` 枚举，不限命名；单子组件模块常为一个 `.c`，多子组件模块可能多个 `.c`）
 - 确保所有函数调用（对外部模块、内部函数、下层BSW的调用）都要体现在动态图中
 - 不能遗漏任何实际被编译执行的函数调用
 - **宏定义的External函数也必须在动态图中体现（重要！）**：
@@ -629,7 +785,7 @@ skinparam SequenceGroupBackgroundColor transparent
 
 **⚠️ 强制检查清单（必须完成所有项才能编写动态图）：**
 
-- [ ] 已完整阅读源文件 `*_prg.c`（从第一行到最后一个函数）
+- [ ] 已完整阅读本模块所有 `.c` 源文件（`ls {模块路径}/*.c`，从第一行到最后一个函数，多子组件时逐个文件完整读一遍）
 - [ ] 已识别所有状态机（switch-case语句）的所有case分支
 - [ ] 已识别所有if-else if-else条件分支
 - [ ] 已对照每个状态/分支的实际代码，列出所有函数调用及位置（行号）
@@ -649,7 +805,7 @@ skinparam SequenceGroupBackgroundColor transparent
 - **嵌套结构**：嵌套的if/switch内部的所有调用都要体现
 
 **函数调用提取步骤：**
-1. 打开本模块的 `*_prg.c` 源文件
+1. 对 `ls {模块路径}/*.c` 列出的每个 `.c` 文件，依次打开阅读（不限命名）
 2. **从头到尾完整阅读一遍**，理解整体逻辑
 3. 找到所有状态机（switch-case），标记每个case
 4. 对每个case，逐一检查内部的if-else if-else分支
@@ -718,7 +874,32 @@ skinparam SequenceGroupBackgroundColor transparent
 
 **Parameters：**
 - 无参数：`No input parameters and no return value`
-- 有参数：列出参数表
+- 有参数：**必须使用参数表**。
+- 参数表表头固定为：
+
+```
+| Name | Type | Direction | Range | Unit | Accuracy | Error | Offsets | Initial |
+|------|------|-----------|-------|------|----------|-------|---------|---------|
+```
+
+- 每个函数参数/返回值（若有）单独一行，`Name` 与 `Type` 必须从函数原型逐项拆分：
+  - `bl_Buffer_t *buffer` → `Name = buffer`，`Type = bl_Buffer_t *`
+  - `const bl_Buffer_t *key` → `Name = key`，`Type = const bl_Buffer_t *`
+  - `bl_u32_t delay_value` → `Name = delay_value`，`Type = bl_u32_t`
+- 函数返回值行填写规则：
+  - 非 `void` 返回值必须单独列一行
+  - 返回值行 `Name` 固定填写 `Return`
+  - 返回值行 `Type` 填函数原型中的返回类型
+  - `void` 返回值不在参数表中单独列行
+- `Direction` 填写规则：
+  - 函数形参 → `Input`
+  - 即使形参是输出指针或输入/输出缓冲区指针（如 `respSize`、`Result`、`buffer`、`pu32flag`），也按函数形参统一填写 `Input`
+  - 函数返回值 → `Output`
+- `Range`：若源码/宏定义或项目 typedef 有明确范围，填写具体范围；基础类型范围必须按项目编译器/typedef 定义填写（如 `uint8_t`、`bl_u16_t`、`int` 等），不能确认时填 `-`。
+- `Unit`：只有物理单位才填写（如 `ms`、`V`），无单位填 `-`。
+- `Accuracy`、`Error`、`Offsets`：无明确设计约束时填 `-`。
+- `Initial`：若函数原型存在默认实参则填写默认值；C 函数通常没有默认实参，填 `-`。
+
 
 **Mermaid流程图语法（必须遵守）：**
 
@@ -837,7 +1018,7 @@ Establish bidirectional traceability relationships between software architecture
 - [ ] **流程图代码语言（必做）**：仅使用实际代码表达式，禁止自然语言或简化描述
 - [ ] **流程图双引号使用（必做）**：节点文本中包含 `[]` `()` `{}` `<>` 等特殊字符时必须用双引号包裹
 - [ ] **流程图完整变量名（必做）**：使用与源码一致的完整变量名和函数名，不能简化
-- [ ] **流程图与源码一致（必做）**：判断条件、调用顺序、返回值与 `*_prg.c` 一致
+- [ ] **流程图与源码一致（必做）**：判断条件、调用顺序、返回值与本模块 `.c` 源文件完全一致
 - [ ] **流程图嵌套结构检查（必做）**：
   - 必须对照源代码逐行检查流程图
   - 特别注意if-else if-else嵌套结构：每个分支都要完整体现
@@ -892,8 +1073,8 @@ Establish bidirectional traceability relationships between software architecture
 - [ ] **条件编译函数必须排除（必做）**：
   - 扫描源码中 `#ifdef` / `#ifndef` / `#if 0` 块
   - 检查宏是否在项目中 `#define`，未定义则块内函数不得写入文档
-  - 验证命令：`grep -n "#ifdef\|#ifndef\|#if 0" BBS_K311_APP/src/Source/{层}/{模块名}/*.[ch]`
-  - 对每个宏：`grep -r "#define 宏名" BBS_K311_APP/`（无输出 = 未定义 = 排除）
+  - 验证命令：`grep -n "#ifdef\|#ifndef\|#if 0" {模块路径}/*.[ch]`
+  - 对每个宏：`grep -r "#define 宏名" {项目根}/`（无输出 = 未定义 = 排除）
 - [ ] **流程图不得简化或编造（必做）**：
   - 必须对照源代码逐行检查流程图
   - 空函数就是空函数，不能添加虚构步骤
@@ -1313,8 +1494,10 @@ cd swdd/scripts
 python3 md_to_word.py <输入MD文件> [可选：img目录]
 
 # 示例
+# 示例（AINCU 模块，APP 项目）：
 python3 md_to_word.py ../AINCU/BBS_K311_APP_AINCU_Software_Detailed_Design_Document_EN.md
 # 自动生成: ../AINCU/BBS_K311_APP_AINCU_Software_Detailed_Design_Document_EN.docx
+# 通用模板：python3 md_to_word.py ../{模块名}/{文档前缀}_{模块名}_Software_Detailed_Design_Document_EN.md
 ```
 
 ### 转换规则
