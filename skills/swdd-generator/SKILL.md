@@ -165,8 +165,36 @@ case IS_XXX:
 | if后 **无return**，后面还有代码 | 该动作节点 → 继续连接到下一个检查 | ArmingToIntDiag → ArmingExit2Check |
 | if-else（互斥） | Y分支和N分支都画，但不能同时存在 | 判断框有两个分支 |
 | 两个独立if（非if-else） | 两个独立的检查路径，后续if的入口需要额外连接 | ArmingExit1 → ArmingToIntDiag → ArmingExit2Check |
+| **常量条件 if/while** | **只画实际可达的固定路径**：`if(1)`/`while(1)` 只连接到真路径；`if(0)`/`while(0)` 只连接到假路径；该唯一出边不标编号；禁止画不可能分支或自环 | `do {...} while(0)` 的 `while(0)?` 节点只能直接连到后续代码 |
 | **ASSERT(条件)** | **必须作为判断分支**：Y分支继续正常流程，N分支连接到 "ASSERT failure" → End | 见下方 ASSERT 规则 |
 | **switch-case** | **每个case和default分支都必须带编号**，格式 `-->\|"N) case值"\|`，编号与其他判断分支统一连续 | 见下方 switch-case 规则 |
+
+### 常量条件 if/while 只画固定可达分支（重要！）
+
+**规则**：源码中的 `if(1)`、`if(0)`、`while(1)`、`while(0)` 是编译期/代码固定条件，不是运行时二选一判断。流程图中必须保留判断框的实际代码表达式，但只能画实际可达的一条路径。由于没有两种及以上分支选择，这条唯一出边**不标注编号，也不标注 T/F/Y/N**。
+
+| 源码条件 | 流程图分支 | 禁止 |
+|---------|------------|------|
+| `if(1)` | 只画 `-->` 到 if 体 | 禁止画 F 分支；禁止给唯一出边编号 |
+| `if(0)` | 只画 `-->` 到后续代码 | 禁止画 T 分支；禁止给唯一出边编号 |
+| `while(1)` | 只画 `-->` 到循环体/持续循环路径 | 禁止画 F 分支；禁止给唯一出边编号 |
+| `while(0)` | 只画 `-->` 到后续代码 | 禁止画 T 分支或自环；禁止给唯一出边编号 |
+
+**典型场景：`do { ... } while(0)`**
+```mermaid
+flowchart TD
+    Body["actual statements in do block"] --> LoopCheck{"while(0)?"}
+    LoopCheck --> Next["next statement after do-while"]
+```
+
+**错误做法**：
+```mermaid
+    LoopCheck{"while(0)?"}
+    LoopCheck -->|"1) T"| LoopCheck
+    LoopCheck -->|"2) F"| Next
+```
+
+**编号要求**：固定路径不参与全图连续编号。例如前一个真正分支编号到 `8)`，中间出现 `while(0)` 的唯一出边不编号，后续真正分支仍从 `9)` 继续。
 
 ### switch-case 分支必须全部编号（重要！）
 
@@ -909,6 +937,7 @@ skinparam SequenceGroupBackgroundColor transparent
 
 - **分支编号格式**：`-->|"1) Y"|`、`-->|"2) N"|`
   - **统一格式**：只使用 `数字+右括号+Y/N` 格式（如 `1) Y`、`2) N`、`3) Y`、`4) N`），禁止使用圆圈数字（如 ①②③）
+  - **常量条件例外**：`if(1)`/`while(1)`/`if(0)`/`while(0)` 只有一个固定路径，不标注编号，也不标注 T/F/Y/N
   - **连续编号**：同一流程图内的所有分支必须连续编号（1→2→3→4...），每个判断的Y/N分支接着上一个判断的编号
   - 示例：
     - 第1个判断：Y分支编号 `1) Y`，N分支编号 `2) N`
@@ -1032,6 +1061,7 @@ Establish bidirectional traceability relationships between software architecture
     - 验证方法：检查从判断节点出来的分支是否都有对应的编号（如 `41) Y` 和 `42) N`），如果某个分支后面多了一条无编号的线连接下一个节点，说明画错了
   - **特别注意每个判断分支的输出数量**：
     - if判断：必须有且只有两个输出（Y和N）
+    - **常量条件 if/while**：`if(1)` / `while(1)` 只有一个固定真路径；`if(0)` / `while(0)` 只有一个固定假路径；唯一出边不编号、不标注 T/F/Y/N
     - switch判断：可以有多个输出（case1、case2、default等）
     - 不能遗漏任何一个分支的输出
     - 示例：错误做法 `判断 --> "Y" ...`（缺少N分支）；正确做法 `判断 --> "1) Y" ... 判断 --> "2) N" ...`
