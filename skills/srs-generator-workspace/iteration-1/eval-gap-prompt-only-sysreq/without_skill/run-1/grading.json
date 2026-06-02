@@ -1,0 +1,42 @@
+{
+  "expectations": [
+    {
+      "text": "区分'已找到/缺失'分类",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "text": "点名 功能安全/ASIL 缺失",
+      "passed": true,
+      "evidence": "ASIL/HARA"
+    },
+    {
+      "text": "点名 网络安全/TARA",
+      "passed": true,
+      "evidence": ""
+    },
+    {
+      "text": "点名 软件架构/SWC 分解",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "text": "点名 NVM 或 Bootloader",
+      "passed": true,
+      "evidence": ""
+    },
+    {
+      "text": "结尾征询用户(补充 vs TBD)",
+      "passed": true,
+      "evidence": ""
+    }
+  ],
+  "passed": 4,
+  "total": 6,
+  "summary": {
+    "pass_rate": 0.6667,
+    "passed": 4,
+    "failed": 2,
+    "total": 6
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "eval_id": 2,
+  "eval_name": "md-to-docx",
+  "prompt": "把已写好的SRS Markdown初稿按公司模板生成最终Word文档，图渲染成图片贴进去",
+  "assertions": [
+    "docx文件存在",
+    "soffice可打开",
+    "内嵌图片≥1张",
+    "保留模板前置内容",
+    "含生成需求表字段",
+    "正文含功能需求章节"
+  ]
+}

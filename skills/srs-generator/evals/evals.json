@@ -1,0 +1,58 @@
+{
+  "skill_name": "srs-generator",
+  "evals": [
+    {
+      "id": 0,
+      "name": "full-md-path",
+      "prompt": "把系统需求文档 系统需求/多功能制氧机系统需求V1.0_20260513-release.docx 转成软件需求文档，模板参照 软件需求/AU-QR-R&D-027-软件需求规范模板-Software Requirements Specification template_V3.0.docx。先告诉我除了系统需求文档还缺哪些文档或信息需要补充，然后生成软件需求规范的 Markdown 初稿。",
+      "expected_output": "先输出一张缺口清单（已找到/部分/缺失，明确点名 ASIL/功能安全、网络安全、软件架构分解、NVM、Bootloader 等缺失项），再生成中文 Markdown 版 SRS：含模板 7 大一级章节、按 SWC 组织的功能需求、含 13 字段的需求表、覆盖需求回链 SR-xx-xxx、缺信息处用【TBD-待补充】标注，图用 mermaid/plantuml。",
+      "files": [],
+      "assertions": [
+        "缺口报告区分已找到/缺失",
+        "点名功能安全/ASIL缺失",
+        "点名网络安全/TARA",
+        "点名软件架构/SWC分解",
+        "点名NVM或Bootloader",
+        "缺口报告征询补充vsTBD",
+        "SRS含≥6个模板一级章节",
+        "需求表含全部13字段",
+        "覆盖需求回链SR-xx-xxx",
+        "含【TBD标记",
+        "≥3功能模块完整需求表",
+        "含mermaid框图"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "gap-prompt-only-sysreq",
+      "prompt": "我手头只有这一份系统需求文档 系统需求/多功能制氧机系统需求V1.0_20260513-release.docx，想做成符合公司模板的软件需求规范。开始前先帮我盘一下：除了这份文档，还缺哪些文档或信息才能写出完整的 SRS？",
+      "expected_output": "一张清晰的缺失输入清单，明确区分'已找到/部分/缺失'，并具体点名 ASIL/功能安全(HARA)、网络安全(TARA)、软件架构/SWC 分解、HSI/信号映射、NVM/Data flash 内容、Bootloader 版本、编码/设计规范等；对每项说明影响哪个 SRS 章节、能否用 TBD 占位继续，并征询用户是先补充还是以 TBD 起草。",
+      "files": [],
+      "assertions": [
+        "区分已找到/缺失分类",
+        "点名功能安全/ASIL(HARA)",
+        "点名网络安全/TARA",
+        "点名软件架构/SWC分解",
+        "点名NVM或Bootloader",
+        "结尾征询补充vsTBD"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "md-to-docx",
+      "prompt": "这是我已经写好的软件需求规范 Markdown 初稿 srs_draft.md（里面有 mermaid 框图），帮我按公司模板 软件需求/AU-QR-R&D-027-软件需求规范模板-Software Requirements Specification template_V3.0.docx 生成最终的 Word 文档，图要渲染成图片贴进去。",
+      "expected_output": "把 md 里的 mermaid/plantuml 渲染成 PNG，克隆模板格式生成 .docx：保留模板封面/修订记录/目录等前置内容，替换示例正文为初稿内容，图片以内嵌图形式出现，最终 .docx 能被 soffice 正常打开。",
+      "files": [
+        "srs_draft.md"
+      ],
+      "assertions": [
+        "docx文件存在",
+        "soffice可打开",
+        "内嵌图片≥1张",
+        "保留模板前置内容",
+        "含生成需求表字段",
+        "正文含功能需求章节"
+      ]
+    }
+  ]
+}

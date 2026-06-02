@@ -1,0 +1,42 @@
+{
+  "expectations": [
+    {
+      "text": "docx 文件存在",
+      "passed": true,
+      "evidence": "/home/alfnoso/.claude/skills/srs-generator-workspace/iteration-1/eval-md-to-docx/with_skill/outputs/软件需求规范.docx"
+    },
+    {
+      "text": "soffice 可打开(转PDF)",
+      "passed": true,
+      "evidence": ""
+    },
+    {
+      "text": "内嵌图片≥1张",
+      "passed": true,
+      "evidence": "inline_shapes=2"
+    },
+    {
+      "text": "保留模板前置(表格数≥3)",
+      "passed": true,
+      "evidence": "tables=5"
+    },
+    {
+      "text": "含生成的需求表字段",
+      "passed": true,
+      "evidence": ""
+    },
+    {
+      "text": "正文含功能需求章节",
+      "passed": true,
+      "evidence": ""
+    }
+  ],
+  "passed": 6,
+  "total": 6,
+  "summary": {
+    "pass_rate": 1.0,
+    "passed": 6,
+    "failed": 0,
+    "total": 6
+  }
+}
