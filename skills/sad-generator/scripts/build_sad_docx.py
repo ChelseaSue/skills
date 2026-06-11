@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a final SRS .docx by cloning the company template (for styles/cover/TOC) and filling in the
+"""Build a final SAD .docx by cloning the company template (for styles/cover/TOC) and filling in the
 generated Markdown body. Diagrams must already be PNGs referenced via ![](path) — run
 render_diagrams.py first.
 
@@ -9,17 +9,44 @@ own styles (Heading 1..6, Normal, Table Grid). This preserves the official look 
 styles. Markdown supported: ATX headings (#..######), GFM pipe tables, '- '/'* ' bullets, blockquotes,
 images ![alt](path), and plain paragraphs. Inline **bold**/`code` markers are stripped to plain text.
 
+The AU-QR-R&D-032 architecture template ships as a legacy binary .doc; python-docx can't open that.
+If --template points at a .doc, this script first converts it to .docx via LibreOffice (soffice).
+
 Usage:
-  python3 build_srs_docx.py <srs.rendered.md> --template <template.docx> --out <out.docx> \
+  python3 build_sad_docx.py <sad.rendered.md> --template <template.doc|.docx> --out <out.docx> \
       [--img-base <dir>] [--keep-front-until "引言"]
 """
 import argparse
 import os
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 
 import docx
 from docx.shared import Inches
+
+
+def ensure_docx_template(path):
+    """python-docx only opens OOXML .docx. If given a legacy .doc, convert it via soffice and return
+    the converted path; otherwise return the path unchanged."""
+    if not path.lower().endswith(".doc"):
+        return path
+    soffice = shutil.which("soffice") or shutil.which("libreoffice")
+    if not soffice:
+        print("ERROR: 模板是 .doc 且系统无 soffice/libreoffice 可转换；请先手动转成 .docx 再传入",
+              file=sys.stderr)
+        sys.exit(1)
+    outdir = tempfile.mkdtemp(prefix="sad_tmpl_")
+    r = subprocess.run([soffice, "--headless", "--convert-to", "docx", "--outdir", outdir, path],
+                       capture_output=True, text=True)
+    converted = os.path.join(outdir, os.path.splitext(os.path.basename(path))[0] + ".docx")
+    if r.returncode != 0 or not os.path.exists(converted):
+        print(f"ERROR: .doc → .docx 转换失败: {r.stderr[:300]}", file=sys.stderr)
+        sys.exit(1)
+    print(f"模板 .doc 已转换为 .docx：{converted}")
+    return converted
 
 
 NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
@@ -28,11 +55,11 @@ NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 def suppress_heading_autonumber(paragraph):
     """Cancel the Heading style's built-in auto-numbering for this paragraph.
 
-    The company templates (AU-QR-R&D-027/032) define Heading 1/2/3 WITH a multilevel auto-number
-    (numId). Our markdown already writes the section numbers into the heading text ("4.1 功能 制氧控制"),
-    so without this Word paints its own number on top — and since the doc title is a Heading 1, the
-    auto-numbers come out offset by one, giving doubled/mismatched numbers. We author the numbers, so
-    override each heading to numId=0 (no list). numPr must follow pStyle in pPr."""
+    The company templates define Heading 1/2/3 WITH a multilevel auto-number (numId). Our markdown
+    already writes the section numbers into the heading text ("4.1 功能 制氧控制"), so without this Word
+    paints its own number on top — and since the doc title is a Heading 1, the auto-numbers come out
+    offset by one, giving doubled/mismatched numbers. We author the numbers, so override each heading
+    to numId=0 (no list). numPr must follow pStyle in pPr."""
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
     pPr = paragraph._p.get_or_add_pPr()
@@ -96,8 +123,8 @@ def strip_inline(s):
 def style_or_default(doc, name, fallback="Normal"):
     """Resolve a paragraph/table style by its display NAME and return the style object.
 
-    python-docx can index doc.styles by style_id (e.g. 'Heading1'), NOT the UI name ('Heading 1'),
-    so a direct doc.styles['Heading 1'] may raise KeyError and the body silently falls back to Normal,
+    python-docx indexes doc.styles by style_id (e.g. 'Heading1'), NOT by the UI name ('Heading 1'),
+    so a direct doc.styles['Heading 1'] raises KeyError and the body silently falls back to Normal —
     losing all heading structure/TOC. We map name -> style object ourselves. Returns the fallback
     style object (or None) when the requested name isn't present."""
     by_name = {}
@@ -228,7 +255,8 @@ def main():
                          "keyword (default: first Heading-1 of any text)")
     args = ap.parse_args()
 
-    doc = docx.Document(args.template)
+    template = ensure_docx_template(args.template)
+    doc = docx.Document(template)
     body = doc.element.body
 
     # remove template's example body (from first Heading-1 onward)

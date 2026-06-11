@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "module_spec",
+  "description": "Describes the layered code plan derived from the SAD: which modules in which layers, each module's public API, dependencies, and the SRS requirements it implements. scaffold_tree.py consumes this. ALL names come from the real SAD/project — examples are illustrative only.",
+  "type": "object",
+  "required": ["modules"],
+  "properties": {
+    "project": {"type": "string", "description": "项目名（写进文件头/注释）"},
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "layer"],
+        "properties": {
+          "name": {"type": "string", "description": "模块名（也是文件名 stem，如 ModeMgr → ModeMgr.h/.c/_Cfg.h）"},
+          "layer": {"type": "string", "description": "所属层，必须是 layers.json 的 layers 之一"},
+          "dir": {"type": "string", "description": "可选：显式相对目录；缺省则按层基目录/模块名派生"},
+          "flat": {"type": "boolean", "description": "可选：true 则文件直接放层基目录，不建模块子目录"},
+          "hal_split": {"type": "boolean", "description": "可选：true 则头+cfg 放 <base>/If，.c 放 <base>/Impl（HAL 可注入接口范式）"},
+          "brief": {"type": "string", "description": "一句话职责，写进文件头"},
+          "implements": {"type": "array", "items": {"type": "string"}, "description": "本模块覆盖的 SRS 需求 ID（追溯）"},
+          "deps": {"type": "array", "items": {"type": "string"}, "description": "本模块 #include 的下层/同层/横切头文件名（不得含上层、不得跳层）"},
+          "api": {
+            "type": "array",
+            "description": "公开接口契约（来自 SAD 组件 API 表）",
+            "items": {
+              "type": "object",
+              "required": ["proto"],
+              "properties": {
+                "proto": {"type": "string", "description": "完整函数原型，如 'IF_Status_t ModeMgr_Set(uint8_t mode)'"},
+                "brief": {"type": "string"},
+                "contract": {"type": "string", "description": "语义注释，如 '@thread_safe @isr_unsafe @blocking 1ms'"},
+                "implements": {"type": "array", "items": {"type": "string"}, "description": "该函数覆盖的需求 ID"}
+              }
+            }
+          },
+          "cfg": {
+            "type": "array",
+            "description": "编译期配置宏（进 _Cfg.h），用常量替代魔法数字",
+            "items": {
+              "type": "object",
+              "required": ["name", "value"],
+              "properties": {
+                "name": {"type": "string"},
+                "value": {"type": "string", "description": "带 MISRA 后缀，如 '32u'"},
+                "comment": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

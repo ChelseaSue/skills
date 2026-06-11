@@ -1,0 +1,31 @@
+{
+  "skill_name": "sad-generator",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "把 软件需求/多功能制氧机软件需求规范_初稿.md 按 软件架构/AU-QR-R&D-032-软件架构设计规格说明书Software Architecture Design Specification_V2.1.doc 模板转成软件架构设计文档。时序图要用到的 CAN 信号从 通信矩阵/OXY_CAN_Matrix_V1_Kevin_20260513_Release.xlsx 取，标出实际用到的信号。先告诉我除了软件需求还缺哪些信息要补。",
+      "expected_output": "先打印缺口提示（点出 SRS 之外缺的设计决策类输入：RTOS/调度、CPU负载、内存映射、NVM字典、看门狗、组件API等，并尊重'功能安全本期不考虑'），再生成中文 Markdown SAD：含 PlantUML 分层架构图、状态机图、各功能动态时序图（标真实CAN信号），结尾全量追溯矩阵覆盖所有 HOD_SRS_* 需求。",
+      "files": [
+        "软件需求/多功能制氧机软件需求规范_初稿.md",
+        "软件架构/AU-QR-R&D-032-软件架构设计规格说明书Software Architecture Design Specification_V2.1.doc",
+        "通信矩阵/OXY_CAN_Matrix_V1_Kevin_20260513_Release.xlsx"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "我们已经有软件需求规范了（在 软件需求/ 目录），现在要做软件架构设计。帮我先盘点一下还缺哪些文档或信息，再按公司的架构模板起草。架构图和时序图都用 plantuml 画。",
+      "expected_output": "运行 discover_inputs 后给出'已找到 vs 缺失'清单，明确区分 SRS 已能支撑的部分与需用户确认的设计决策类缺口，给出 TBD/建议方案兜底选项；用户确认后按 032 模板九大章生成 Markdown SAD，三类图均为 PlantUML，并做 100% 追溯。",
+      "files": [
+        "软件需求/多功能制氧机软件需求规范_初稿.md",
+        "软件架构/AU-QR-R&D-032-软件架构设计规格说明书Software Architecture Design Specification_V2.1.doc",
+        "通信矩阵/OXY_CAN_Matrix_V1_Kevin_20260513_Release.xlsx"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "把刚才那份软件架构 markdown 转成 Word 文档，图都要渲染出来贴进去，最后帮我确认每条软件需求都被架构覆盖到了。",
+      "expected_output": "用 render_diagrams.py 把 PlantUML/mermaid 渲成 PNG，用 build_sad_docx.py 克隆 032 模板生成 .docx 并嵌图，soffice 转 pdf 烟雾测试，最后跑 trace_check.py 报告 HOD_SRS_* 覆盖率（应 100%，未覆盖集为空）。",
+      "files": []
+    }
+  ]
+}

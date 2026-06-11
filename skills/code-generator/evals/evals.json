@@ -1,0 +1,26 @@
+{
+  "skill_name": "code-generator",
+  "evals": [
+    {
+      "id": 0,
+      "name": "gap-prompt-only",
+      "prompt": "我想根据 CPM 的软件需求规格书和软件架构设计文档生成工程代码，开始之前先帮我看看还缺哪些输入和信息需要补充？项目在 /home/alfnoso/projects/cpm。",
+      "expected_output": "触发本 skill；运行 discover_inputs 盘点；给出'已找到 vs 缺失/待确认'清单，明确点出 SAD/SRS/SDK 之外的实现级信息缺口（管脚/时钟/实例号/任务优先级/缓冲尺寸/NVM/CAN 报文细节），并把判断权交还用户。不应直接开始生成代码。",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "scaffold-layered-tree",
+      "prompt": "按 CPM 的软件架构设计文档，从零搭一套分层的工程代码骨架：目录要体现分层和模块关系，HAL 用接口/实现拆分，头文件带 API 契约和需求追溯标注，先不用填具体逻辑。项目根 /home/alfnoso/projects/cpm，软件架构在 软件架构/CPM_软件架构设计规格说明书.md，软件需求在 软件需求/CPM_软件需求规格书_V0.2_20260512.md。生成到 /tmp/cpm_gen 即可。",
+      "expected_output": "脚手架模式：先做缺口提示；按 SAD 派生层与模块建 module_spec/layers；生成分层目录树 + 每模块 .h/.c/_Cfg.h（含 @implements 追溯、契约注释、include guard、仅含下层/同层/横切 include）；跑 check_layering 0 违规；目录能一眼看出分层。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "implement-one-module",
+      "prompt": "在 /tmp/cpm_gen 这套已有骨架上，按软件架构里运行模式状态机(ModeMgr)的章节，实现 ModeMgr 模块的完整逻辑：状态/转移要对齐架构文档，代码满足 MISRA C:2012，严格守分层（硬件只经 HAL 接口、同层走信号总线），并标好需求追溯。软件架构 /home/alfnoso/projects/cpm/软件架构/CPM_软件架构设计规格说明书.md。",
+      "expected_output": "逐模块模式：读 SAD 对应章节+依赖接口头；写出对齐状态机的完整实现；MISRA 按构造（定长类型/后缀u/NULL校验/switch default/无动态内存）；不 include 上层、不跳层；@implements 标注；可跑 check_layering 与 conformance_check。",
+      "files": []
+    }
+  ]
+}

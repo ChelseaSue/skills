@@ -1,0 +1,43 @@
+{
+  "_comment": "示例：一套典型嵌入式分层。层数/层名/路径一律按真实 SAD 改写，勿照抄。high -> low。",
+  "layers": ["App", "Service", "Hal", "Cdd", "Mcal", "Os"],
+  "cross_cutting": ["Bus", "Types", "Cfg"],
+  "path_map": {
+    "Source/App": "App",
+    "Source/Service": "Service",
+    "Source/Hal": "Hal",
+    "Source/Cdd": "Cdd",
+    "Source/Mcal": "Mcal",
+    "Source/Os": "Os",
+    "Source/Bus": "Bus",
+    "IF_Types": "Types"
+  },
+  "header_map": {
+    "IF_Types.h": "Types",
+    "SignalBus.h": "Bus",
+    "EventBus.h": "Bus"
+  },
+  "file_prefix": {
+    "App": "App_",
+    "Service": "Svc_",
+    "Hal": "IF_",
+    "Cdd": "Cdd_",
+    "Mcal": "Mcal_"
+  },
+  "labels": {
+    "App": "应用层", "Service": "服务层", "Hal": "硬件抽象层",
+    "Cdd": "复杂驱动", "Mcal": "微控制器层", "Os": "操作系统", "Bus": "横切总线"
+  },
+  "colors": {
+    "App":  {"fill": "#9FC5E8", "accent": "#1976D2"},
+    "Hal":  {"fill": "#F6B26B", "accent": "#EF6C00"},
+    "Cdd":  {"fill": "#93C47D", "accent": "#2E7D32"},
+    "Mcal": {"fill": "#A8D08D", "accent": "#1B5E20"},
+    "Service": {"fill": "#D7D86E", "accent": "#827717"},
+    "Os":   {"fill": "#FFD966", "accent": "#E65100"}
+  },
+  "cross_spans": {},
+  "allow_edges": [],
+  "strict_adjacent": true,
+  "_note": "labels=层中文显示名(竖标签用); colors=层配色; cross_spans=横切层显式指定跨哪些层(空则按 deps 自动推断); 以上均供 render_layer_diagram.py 画图用，可选。"
+}
