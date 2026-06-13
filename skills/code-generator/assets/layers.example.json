@@ -1,7 +1,45 @@
 {
-  "_comment": "示例：一套典型嵌入式分层。层数/层名/路径一律按真实 SAD 改写，勿照抄。high -> low。",
+  "_comment": "默认通用嵌入式分层：App→Service→HAL；片内 HAL→MCAL，外挂 HAL→CDD→MCAL；MCAL 与 OS/RTOS 平级、共同直接位于硬件之上且互不依赖。真实 SAD 有明确差异时按 SAD 改写。",
   "layers": ["App", "Service", "Hal", "Cdd", "Mcal", "Os"],
+  "peer_groups": [
+    ["Mcal", "Os"]
+  ],
+  "peer_group_labels": {
+    "Mcal|Os": "基础平台"
+  },
+  "branch_layers": ["Cdd"],
   "cross_cutting": ["Bus", "Types", "Cfg"],
+  "layer_info": {
+    "App": {
+      "responsibility": ["业务逻辑", "功能编排", "状态机"],
+      "content_label": "典型内容 / TYPICAL CONTENT"
+    },
+    "Service": {
+      "responsibility": ["硬件无关通用服务", "能力编排与适配", "实时算法"],
+      "content_label": "典型内容 / TYPICAL CONTENT"
+    },
+    "Hal": {
+      "responsibility": ["解释“做什么”", "屏蔽硬件差异", "接口可替换/打桩"],
+      "content_label": "典型内容 / TYPICAL CONTENT"
+    },
+    "Cdd": {
+      "responsibility": ["总线外挂芯片", "芯片协议与专用驱动"],
+      "content_label": "典型内容 / TYPICAL CONTENT"
+    },
+    "Mcal": {
+      "responsibility": ["片上外设", "寄存器级驱动"],
+      "content_label": "典型内容 / TYPICAL CONTENT"
+    },
+    "Os": {
+      "responsibility": ["调度与任务", "同步原语", "系统启动与时基"],
+      "content_label": "典型内容 / TYPICAL CONTENT"
+    }
+  },
+  "cross_content": {
+    "Types": {"title": "Types", "lines": ["公共类型", "统一返回码"]},
+    "Bus": {"title": "Bus", "lines": ["信号总线", "事件总线"]},
+    "Cfg": {"title": "Cfg", "lines": ["全局配置", "编译期参数"]}
+  },
   "path_map": {
     "Source/App": "App",
     "Source/Service": "Service",
@@ -15,14 +53,33 @@
   "header_map": {
     "IF_Types.h": "Types",
     "SignalBus.h": "Bus",
-    "EventBus.h": "Bus"
+    "EventBus.h": "Bus",
+    "Svc_NativeDeviceService.h": "Service",
+    "Svc_OsIf.h": "Service",
+    "IF_Gpio.h": "Hal",
+    "IF_Adc.h": "Hal",
+    "IF_Pwm.h": "Hal",
+    "IF_Can.h": "Hal",
+    "IF_Timer.h": "Hal",
+    "IF_Wdg.h": "Hal",
+    "Mcal_Dio.h": "Mcal",
+    "Mcal_Adc.h": "Mcal",
+    "Mcal_Pwm.h": "Mcal",
+    "Mcal_Timer.h": "Mcal",
+    "Mcal_Can.h": "Mcal",
+    "Mcal_Uart.h": "Mcal",
+    "Mcal_Spi.h": "Mcal",
+    "Mcal_I2c.h": "Mcal",
+    "Mcal_Wdg.h": "Mcal",
+    "Os_Task.h": "Os"
   },
   "file_prefix": {
     "App": "App_",
     "Service": "Svc_",
     "Hal": "IF_",
     "Cdd": "Cdd_",
-    "Mcal": "Mcal_"
+    "Mcal": "Mcal_",
+    "Os": "Os_"
   },
   "labels": {
     "App": "应用层", "Service": "服务层", "Hal": "硬件抽象层",
@@ -37,7 +94,53 @@
     "Os":   {"fill": "#FFD966", "accent": "#E65100"}
   },
   "cross_spans": {},
+  "architecture_edges": [
+    ["App", "Service"],
+    ["Service", "Hal"],
+    ["Service", "Os"],
+    ["Hal", "Mcal"],
+    ["Hal", "Cdd"],
+    ["Cdd", "Mcal"]
+  ],
+  "edge_styles": {
+    "App>Service": {
+      "label": "App → Native/Device Service\n命令 / 目标值",
+      "color": "#E65100",
+      "route": "direct",
+      "start_ratio": 0.32,
+      "target_ratio": 0.32
+    },
+    "Service>Hal": {
+      "label": "Native 快速受控访问",
+      "color": "#00897B",
+      "route": "side_direct",
+      "source_module": "NativeDeviceService"
+    },
+    "Service>Os": {
+      "label": "仅 OSIF → OS/RTOS",
+      "color": "#E65100",
+      "route": "right",
+      "source_module": "OsIf"
+    },
+    "Hal>Mcal": {
+      "label": "片内外设直达路径\nHAL → MCAL",
+      "color": "#1976D2",
+      "route": "direct",
+      "start_ratio": 0.22,
+      "target_ratio": 0.48
+    },
+    "Hal>Cdd": {
+      "label": "外挂芯片路径\nHAL → CDD → MCAL",
+      "color": "#1976D2",
+      "route": "branch",
+      "start_ratio": 0.72
+    },
+    "Cdd>Mcal": {
+      "color": "#1976D2",
+      "route": "merge_left"
+    }
+  },
   "allow_edges": [],
   "strict_adjacent": true,
-  "_note": "labels=层中文显示名(竖标签用); colors=层配色; cross_spans=横切层显式指定跨哪些层(空则按 deps 自动推断); 以上均供 render_layer_diagram.py 画图用，可选。"
+  "_note": "peer_groups 表示架构高度相同但默认互不依赖；Native/Device Service 受控访问 HAL，OSIF 单独适配 OS/RTOS；CDD 是可选分支，MCAL 与 OS/RTOS 共同直接位于硬件之上。"
 }

@@ -3,14 +3,17 @@
 
 Rules (see references/layering-rules.md):
   - No UPWARD include: a file must not include a header in a HIGHER layer.
-  - No SKIP-LAYER include (when strict_adjacent=true): an upper layer may include only the
-    immediately-lower layer (+ same layer + cross-cutting + explicitly allowed edges).
+  - No UNDECLARED SKIP-LAYER include (when strict_adjacent=true): an upper layer may include only
+    the immediately-lower layer (+ same layer + cross-cutting + architecture/exception edges).
+  - Peer layers share one architecture rank but may not include one another unless an edge permits it.
   - Same-layer includes are allowed at the include level (semantic decoupling is checked by review).
-  - Cross-cutting layers (Types/Bus/Cfg...) and allow_edges are always permitted.
+  - architecture_edges describe legal SAD topology; allow_edges describe approved deviations.
+  - Cross-cutting layers (Types/Bus/Cfg...), architecture_edges, and allow_edges are permitted.
 
 layers.json schema:
 {
   "layers": ["App", "Service", "Hal", "Cdd", "Mcal", "Os"],   // high -> low, ordered
+  "peer_groups": [["Mcal","Os"]],                               // same rank, isolated by default
   "cross_cutting": ["Bus", "Types", "Cfg"],                     // accessible from any layer
   "path_map": {                                                  // path-substring -> layer (first match wins)
       "Source/App": "App", "Source/Service": "Service",
@@ -19,7 +22,10 @@ layers.json schema:
       "Source/Bus": "Bus", "IF_Types": "Types"
   },
   "header_map": {"IF_Gpio.h": "Hal"},   // OPTIONAL explicit header-basename -> layer overrides
-  "allow_edges": [["App","Os"]],          // OPTIONAL extra permitted (from_layer, to_layer) pairs
+  "architecture_edges": [                  // OPTIONAL legal non-linear SAD topology
+      ["Service","Os"], ["Hal","Mcal"], ["Hal","Cdd"], ["Cdd","Mcal"]
+  ],
+  "allow_edges": [["App","Os"]],          // OPTIONAL approved deviation pairs
   "strict_adjacent": true                  // forbid skipping layers downward (default true)
 }
 
@@ -42,10 +48,39 @@ def load_cfg(path):
     with open(path, "r", encoding="utf-8") as f:
         cfg = json.load(f)
     cfg.setdefault("cross_cutting", [])
+    cfg.setdefault("peer_groups", [])
     cfg.setdefault("header_map", {})
+    cfg.setdefault("architecture_edges", [])
     cfg.setdefault("allow_edges", [])
     cfg.setdefault("strict_adjacent", True)
     return cfg
+
+
+def build_ranks(layers, peer_groups):
+    """Map ordered layers to architecture ranks, collapsing each peer group to one rank."""
+    peer_of = {}
+    for group in peer_groups:
+        members = list(dict.fromkeys(group))
+        unknown = [member for member in members if member not in layers]
+        if unknown:
+            raise ValueError(f"peer_groups contains unknown layers: {unknown}")
+        for layer in members:
+            if layer in peer_of:
+                raise ValueError(f"layer appears in multiple peer_groups: {layer}")
+            peer_of[layer] = tuple(members)
+
+    ranks = {}
+    rank = 0
+    consumed = set()
+    for layer in layers:
+        if layer in consumed:
+            continue
+        group = peer_of.get(layer, (layer,))
+        for member in group:
+            ranks[member] = rank
+            consumed.add(member)
+        rank += 1
+    return ranks
 
 
 def layer_of_path(relpath, cfg):
@@ -90,8 +125,9 @@ def main():
 
     root = os.path.abspath(args.root)
     cfg = load_cfg(args.layers)
-    order = {name: i for i, name in enumerate(cfg["layers"])}  # smaller index = higher layer
+    order = build_ranks(cfg["layers"], cfg["peer_groups"])  # smaller rank = higher layer
     cross = set(cfg["cross_cutting"])
+    architecture = {(a, b) for a, b in cfg["architecture_edges"]}
     allow = {(a, b) for a, b in cfg["allow_edges"]}
     strict = bool(cfg["strict_adjacent"])
     hdr_index = build_header_index(root)
@@ -137,8 +173,6 @@ def main():
                     continue  # unknown / SDK / system header -> skip
                 if tgt_layer in cross or cur_layer in cross:
                     continue  # cross-cutting always allowed
-                if (cur_layer, tgt_layer) in allow:
-                    continue
                 if cur_layer not in order or tgt_layer not in order:
                     continue
                 ci, ti = order[cur_layer], order[tgt_layer]
@@ -147,11 +181,18 @@ def main():
                         "file": rel, "line": ln, "include": inc,
                         "from": cur_layer, "to": tgt_layer, "kind": "UPWARD",
                         "msg": f"向上依赖：{cur_layer} → {tgt_layer}（下层在上层之上，禁止）"})
+                elif (cur_layer, tgt_layer) in architecture or (cur_layer, tgt_layer) in allow:
+                    continue
+                elif cur_layer != tgt_layer and ti == ci:
+                    violations.append({
+                        "file": rel, "line": ln, "include": inc,
+                        "from": cur_layer, "to": tgt_layer, "kind": "PEER",
+                        "msg": f"平级依赖：{cur_layer} → {tgt_layer}（peer_groups 成员默认互不依赖）"})
                 elif strict and (ti - ci) > 1:
                     violations.append({
                         "file": rel, "line": ln, "include": inc,
                         "from": cur_layer, "to": tgt_layer, "kind": "SKIP",
-                        "msg": f"跳层：{cur_layer} 跳过中间层直够 {tgt_layer}（应经相邻下层接口）"})
+                        "msg": f"未声明跳层：{cur_layer} → {tgt_layer}（应经相邻下层接口或 architecture_edges）"})
 
     result = {
         "root": root, "files_scanned": files_scanned,

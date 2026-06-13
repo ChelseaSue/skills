@@ -13,13 +13,15 @@
         "required": ["name", "layer"],
         "properties": {
           "name": {"type": "string", "description": "模块名（也是文件名 stem，如 ModeMgr → ModeMgr.h/.c/_Cfg.h）"},
+          "display": {"type": "string", "description": "可选：仅用于架构图的显示名称，可含换行，不影响代码文件名"},
+          "highlight": {"type": "boolean", "description": "可选：在架构图中突出关键能力门面或关键模块"},
           "layer": {"type": "string", "description": "所属层，必须是 layers.json 的 layers 之一"},
           "dir": {"type": "string", "description": "可选：显式相对目录；缺省则按层基目录/模块名派生"},
           "flat": {"type": "boolean", "description": "可选：true 则文件直接放层基目录，不建模块子目录"},
           "hal_split": {"type": "boolean", "description": "可选：true 则头+cfg 放 <base>/If，.c 放 <base>/Impl（HAL 可注入接口范式）"},
           "brief": {"type": "string", "description": "一句话职责，写进文件头"},
           "implements": {"type": "array", "items": {"type": "string"}, "description": "本模块覆盖的 SRS 需求 ID（追溯）"},
-          "deps": {"type": "array", "items": {"type": "string"}, "description": "本模块 #include 的下层/同层/横切头文件名（不得含上层、不得跳层）"},
+          "deps": {"type": "array", "items": {"type": "string"}, "description": "本模块 #include 的相邻下层、architecture_edges 目标层、同层公开接口或横切头文件名（不得含上层、不得沿未声明路径跳层、不得依赖未显式放行的平级层）"},
           "api": {
             "type": "array",
             "description": "公开接口契约（来自 SAD 组件 API 表）",

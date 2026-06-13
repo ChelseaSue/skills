@@ -1,38 +1,266 @@
 {
-  "_comment": "示例 codegen plan：仅演示结构。模块名/层/需求 ID/接口一律按真实 SAD/SRS 改写，勿照抄。",
+  "_comment": "默认通用分层的说明性模块。真实项目仍须按 SAD/SRS 改写模块名、接口和需求 ID。",
   "project": "ExampleECU",
   "modules": [
     {
-      "name": "ModeMgr",
+      "name": "BusinessModule",
+      "display": "业务功能模块",
       "layer": "App",
-      "brief": "运行模式状态机（初始化/运行/降级/休眠）",
-      "implements": ["EXM_SRS_010", "EXM_SRS_011"],
-      "deps": ["SignalBus.h", "IF_Wdg.h"],
-      "api": [
-        {"proto": "void ModeMgr_Init(void)", "brief": "初始化状态机", "contract": "@thread_safe @isr_unsafe"},
-        {"proto": "void ModeMgr_Tick(void)", "brief": "10ms 周期推进状态机", "contract": "@thread_safe @isr_unsafe", "implements": ["EXM_SRS_011"]},
-        {"proto": "IF_Status_t ModeMgr_Request(uint8_t mode)", "brief": "请求切换模式", "contract": "@thread_safe @isr_unsafe", "implements": ["EXM_SRS_010"]}
-      ],
-      "cfg": [
-        {"name": "MODEMGR_TICK_MS", "value": "10u", "comment": "调度周期"},
-        {"name": "MODEMGR_SLEEP_TIMEOUT_MS", "value": "5000u", "comment": "TBD: 确认休眠超时"}
-      ]
+      "brief": "承载具体产品业务逻辑",
+      "implements": ["EXM_SRS_010"],
+      "deps": ["SignalBus.h", "Svc_NativeDeviceService.h"],
+      "api": [{"proto": "void BusinessModule_Tick(void)", "brief": "周期执行业务逻辑"}]
+    },
+    {
+      "name": "MainOrchestrator",
+      "display": "主编排 / 状态机",
+      "layer": "App",
+      "brief": "组织业务流程与系统运行状态",
+      "implements": ["EXM_SRS_011"],
+      "deps": ["Svc_NativeDeviceService.h"],
+      "api": [{"proto": "void MainOrchestrator_Tick(void)", "brief": "推进主状态机"}]
+    },
+    {
+      "name": "TaskScheduler",
+      "display": "任务调度",
+      "layer": "App",
+      "brief": "编排应用周期任务，不直接使用 OS 原语",
+      "implements": [],
+      "deps": ["Svc_OsIf.h"],
+      "api": [{"proto": "void TaskScheduler_Run(void)", "brief": "执行应用调度表"}]
+    },
+    {
+      "name": "NativeDeviceService",
+      "display": "Native / Device Service\n硬件能力门面",
+      "layer": "Service",
+      "brief": "向 App 暴露低开销设备能力，并完成校验、仲裁和受控 HAL 调用",
+      "highlight": true,
+      "implements": ["EXM_SRS_020"],
+      "deps": ["IF_Gpio.h", "IF_Adc.h", "IF_Pwm.h", "IF_Can.h"],
+      "api": [{"proto": "IF_Status_t NativeDeviceService_Execute(uint16_t command)", "brief": "快速执行受控设备命令"}]
+    },
+    {
+      "name": "DiagnosticService",
+      "display": "诊断服务",
+      "layer": "Service",
+      "brief": "故障诊断与健康监控",
+      "implements": [],
+      "deps": ["IF_Can.h"]
+    },
+    {
+      "name": "ParameterNvm",
+      "display": "参数 / NVM",
+      "layer": "Service",
+      "brief": "参数管理与非易失存储服务",
+      "implements": [],
+      "deps": ["IF_Types.h"]
+    },
+    {
+      "name": "ProtocolAdapter",
+      "display": "协议栈适配",
+      "layer": "Service",
+      "brief": "隔离通信协议栈与业务模块",
+      "implements": [],
+      "deps": ["SignalBus.h", "IF_Can.h"]
+    },
+    {
+      "name": "OsIf",
+      "display": "OSIF",
+      "layer": "Service",
+      "brief": "封装任务、同步与时基，隔离具体 OS/RTOS",
+      "implements": ["EXM_SRS_021"],
+      "deps": ["Os_Task.h"],
+      "api": [{"proto": "IF_Status_t OsIf_StartWorker(void)", "brief": "启动服务工作任务"}]
+    },
+    {
+      "name": "PidFoc",
+      "display": "PID / FOC",
+      "layer": "Service",
+      "brief": "可移植实时控制算法核",
+      "implements": [],
+      "deps": ["IF_Adc.h", "IF_Pwm.h"]
+    },
+    {
+      "name": "FilterEstimator",
+      "display": "滤波 / 状态估计",
+      "layer": "Service",
+      "brief": "信号处理与状态估计算法",
+      "implements": [],
+      "deps": ["IF_Types.h"]
     },
     {
       "name": "IF_Gpio",
+      "display": "IF_Gpio",
       "layer": "Hal",
       "hal_split": true,
       "brief": "GPIO 硬件抽象接口",
       "implements": ["EXM_SRS_050"],
-      "deps": [],
-      "api": [
-        {"proto": "void IF_Gpio_Init(void)", "brief": "初始化 GPIO", "contract": "@thread_safe @isr_unsafe"},
-        {"proto": "IF_Status_t IF_Gpio_Write(GpioPinId_t pin, uint8_t level)", "brief": "写引脚电平", "contract": "@thread_safe @isr_safe", "implements": ["EXM_SRS_050"]},
-        {"proto": "IF_Status_t IF_Gpio_Read(GpioPinId_t pin, uint8_t *out_level)", "brief": "读引脚电平", "contract": "@thread_safe @isr_safe"}
-      ],
-      "cfg": [
-        {"name": "IF_GPIO_PIN_COUNT", "value": "16u", "comment": "TBD: 按 HSI/PINMUX 确认通道数"}
-      ]
+      "deps": ["Mcal_Dio.h"]
+    },
+    {
+      "name": "IF_Adc",
+      "display": "IF_Adc",
+      "layer": "Hal",
+      "hal_split": true,
+      "brief": "ADC 硬件抽象接口",
+      "implements": [],
+      "deps": ["Mcal_Adc.h"]
+    },
+    {
+      "name": "IF_Pwm",
+      "display": "IF_Pwm",
+      "layer": "Hal",
+      "hal_split": true,
+      "brief": "PWM 硬件抽象接口",
+      "implements": [],
+      "deps": ["Mcal_Pwm.h"]
+    },
+    {
+      "name": "IF_Can",
+      "display": "IF_Can",
+      "layer": "Hal",
+      "hal_split": true,
+      "brief": "CAN 硬件抽象接口",
+      "implements": [],
+      "deps": ["Mcal_Can.h"]
+    },
+    {
+      "name": "IF_Timer",
+      "display": "IF_Timer",
+      "layer": "Hal",
+      "hal_split": true,
+      "brief": "定时器硬件抽象接口",
+      "implements": [],
+      "deps": ["Mcal_Timer.h"]
+    },
+    {
+      "name": "IF_Wdg",
+      "display": "IF_Wdg",
+      "layer": "Hal",
+      "hal_split": true,
+      "brief": "看门狗硬件抽象接口",
+      "implements": [],
+      "deps": ["Mcal_Wdg.h"]
+    },
+    {
+      "name": "Cdd_Pmic",
+      "display": "PMIC",
+      "layer": "Cdd",
+      "brief": "外挂 PMIC 专用驱动",
+      "implements": ["EXM_SRS_060"],
+      "deps": ["Mcal_Spi.h"]
+    },
+    {
+      "name": "Cdd_BmsAfe",
+      "display": "BMS AFE",
+      "layer": "Cdd",
+      "brief": "外挂电池模拟前端驱动",
+      "implements": [],
+      "deps": ["Mcal_Spi.h"]
+    },
+    {
+      "name": "Cdd_ExtSensor",
+      "display": "外部传感器",
+      "layer": "Cdd",
+      "brief": "总线外挂传感器驱动",
+      "implements": [],
+      "deps": ["Mcal_I2c.h"]
+    },
+    {
+      "name": "Cdd_ExtStorage",
+      "display": "外部存储器",
+      "layer": "Cdd",
+      "brief": "总线外挂存储器驱动",
+      "implements": [],
+      "deps": ["Mcal_Spi.h"]
+    },
+    {
+      "name": "DioAdc",
+      "display": "GPIO / ADC",
+      "layer": "Mcal",
+      "brief": "片上数字 IO 与 ADC 寄存器级驱动",
+      "implements": [],
+      "deps": []
+    },
+    {
+      "name": "PwmTimer",
+      "display": "PWM / Timer",
+      "layer": "Mcal",
+      "brief": "片上 PWM 与定时器驱动",
+      "implements": [],
+      "deps": []
+    },
+    {
+      "name": "CanUart",
+      "display": "CAN / UART",
+      "layer": "Mcal",
+      "brief": "片上通信控制器驱动",
+      "implements": [],
+      "deps": []
+    },
+    {
+      "name": "SpiI2c",
+      "display": "SPI / I2C",
+      "layer": "Mcal",
+      "brief": "外挂芯片总线控制器驱动",
+      "implements": [],
+      "deps": []
+    },
+    {
+      "name": "DmaIrq",
+      "display": "DMA / IRQ",
+      "layer": "Mcal",
+      "brief": "DMA 与中断控制",
+      "implements": [],
+      "deps": []
+    },
+    {
+      "name": "Watchdog",
+      "display": "Watchdog",
+      "layer": "Mcal",
+      "brief": "片上看门狗驱动",
+      "implements": [],
+      "deps": []
+    },
+    {
+      "name": "Kernel",
+      "display": "FreeRTOS / AUTOSAR OS",
+      "layer": "Os",
+      "brief": "操作系统内核与调度器",
+      "implements": [],
+      "deps": []
+    },
+    {
+      "name": "TaskIsr",
+      "display": "Task / ISR",
+      "layer": "Os",
+      "brief": "任务与中断运行模型",
+      "implements": [],
+      "deps": []
+    },
+    {
+      "name": "QueueEvent",
+      "display": "Queue / Event",
+      "layer": "Os",
+      "brief": "队列与事件原语",
+      "implements": [],
+      "deps": []
+    },
+    {
+      "name": "MutexSemaphore",
+      "display": "Mutex / Semaphore",
+      "layer": "Os",
+      "brief": "互斥与信号量原语",
+      "implements": [],
+      "deps": []
+    },
+    {
+      "name": "StartupTimebase",
+      "display": "启动 / 时基",
+      "layer": "Os",
+      "brief": "板级启动与系统时基",
+      "implements": [],
+      "deps": []
     }
   ]
 }

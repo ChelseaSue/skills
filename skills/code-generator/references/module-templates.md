@@ -19,7 +19,7 @@
 
 #include "IF_Types.h"        /* 横切层：统一返回码/类型 */
 #include "<Module>_Cfg.h"    /* 同模块编译期配置 */
-/* 只可再 #include：相邻下层接口 + 同层公开接口 + 横切层。绝不含上层、不跳层。 */
+/* 只可再 #include：相邻下层/architecture_edges 接口 + 同层公开接口 + 横切层。绝不含上层、不走未声明跳层。 */
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,7 +80,7 @@ IF_Status_t <Module>_DoSomething(uint16_t arg);
 ** @brief   <Module> 实现。所属层：<层名>。
 */
 #include "<Module>.h"
-/* 仅 #include 相邻下层接口（如 HAL 的 IF_*.h）、横切层（IF_Types.h / SignalBus.h）。 */
+/* 仅 #include 相邻下层或 architecture_edges 接口（如 Service→HAL、HAL→MCAL/CDD）、横切层。 */
 #include "IF_Gpio.h"          /* 例：本模块经 HAL GPIO 接口操作硬件——不直够 MCAL */
 #include "SignalBus.h"        /* 例：同层解耦——读写信号而非互调他模块 */
 
@@ -118,9 +118,12 @@ IF_Status_t <Module>_DoSomething(uint16_t arg)
   靠扫这些标注与 SRS 需求集求差，判断追溯是否 100%。
 - **脚手架模式**：函数体留 `/* TBD: ... */`，但**头文件契约要尽量完整**（从 SAD 组件 API 表抄）——契约是后续
   逐模块实现的合同。
-- **逐模块模式**：把 `TBD` 换成真实逻辑；状态机/时序严格对齐 SAD；同层协作只经总线/公开接口；硬件只经相邻下层接口。
+- **逐模块模式**：把 `TBD` 换成真实逻辑；状态机/时序严格对齐 SAD；同层协作只经总线/公开接口；硬件只经相邻下层
+  或 `architecture_edges` 接口。默认片内外设 `HAL→MCAL`，外挂芯片 `HAL→CDD→MCAL`。
 - **HAL 接口模块**额外遵循 `layering-rules.md` 的 If/Impl 拆分：`If/IF_*.h` 放契约，`Impl/IF_*.c` 调 MCAL/CDD 落地，
   便于换实现/打桩注入。
+- **基础平台约束**：MCAL 与 OS/RTOS 位于同一 `peer_groups`，默认互不 include；OS 原语由 Service/OSIF 使用，
+  MCAL 专注寄存器级外设驱动。
 - **公共数据结构进头文件**：模块对上层暴露的 `typedef`/`enum`/`struct` 写在 `.h`（契约的一部分）；模块**私有**的
   类型/状态留在 `.c` 里。数据传递守 `layering-rules.md §6`：优先参数/返回值，复杂数据 `const T*` 入参 / `T*` 出参，
   不用裸 `extern` 全局，跨模块共享走总线或访问函数。

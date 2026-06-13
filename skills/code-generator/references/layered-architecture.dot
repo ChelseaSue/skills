@@ -1,0 +1,69 @@
+digraph LayeredArch {
+  bgcolor="white";
+  rankdir=TB;
+  node [shape=plaintext, fontname="Noto Sans SC"];
+  graph [fontname="Noto Sans SC"];
+
+  arch [label=<
+  <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="8">
+
+    <TR>
+      <TD COLSPAN="5" BGCOLOR="#212529" CELLPADDING="10">
+        <FONT FACE="Noto Sans SC" COLOR="white" POINT-SIZE="18"><B>嵌入式分层架构（默认基线 · 冲突时由用户决策）</B></FONT>
+      </TD>
+    </TR>
+
+    <TR>
+      <TD BGCOLOR="#343A40"><FONT COLOR="white"><B>↓ 依赖</B></FONT></TD>
+      <TD BGCOLOR="#343A40"><FONT COLOR="white"><B>层</B></FONT></TD>
+      <TD BGCOLOR="#343A40"><FONT COLOR="white"><B>职责</B></FONT></TD>
+      <TD BGCOLOR="#343A40"><FONT COLOR="white"><B>典型内容</B></FONT></TD>
+      <TD BGCOLOR="#0B7285"><FONT COLOR="white"><B>横切层</B></FONT></TD>
+    </TR>
+
+    <TR>
+      <TD ROWSPAN="6" BGCOLOR="#343A40" CELLPADDING="6">
+        <FONT FACE="Noto Sans SC" COLOR="white" POINT-SIZE="13"><B>高<BR/>｜<BR/>层<BR/>序<BR/>｜<BR/>低</B><BR/><BR/>━━ ▼<BR/><BR/>只能向下<BR/>不跨层<BR/>(横切层<BR/>除外)</FONT>
+      </TD>
+      <TD BGCOLOR="#FDE2E4" ALIGN="LEFT"><FONT POINT-SIZE="14"><B>1 · App</B></FONT><BR/><FONT POINT-SIZE="11">应用层</FONT></TD>
+      <TD BGCOLOR="#FFF0F1" ALIGN="LEFT"><FONT POINT-SIZE="12">业务逻辑、功能编排、状态机</FONT></TD>
+      <TD BGCOLOR="#FFF0F1" ALIGN="LEFT"><FONT POINT-SIZE="12">各业务模块（一个功能一个模块）、<BR/>主编排 / 任务调度</FONT></TD>
+      <TD ROWSPAN="6" BGCOLOR="#C3FAE8" CELLPADDING="8" ALIGN="LEFT">
+        <FONT FACE="Noto Sans SC" POINT-SIZE="12"><B>Types</B><BR/>公共类型 / 返回码<BR/><BR/><B>Bus（可选）</B><BR/>信号总线 SignalBus<BR/>事件总线 EventBus<BR/><BR/><B>Cfg</B><BR/>全局配置</FONT>
+        <BR/><BR/><FONT FACE="Noto Sans SC" POINT-SIZE="11" COLOR="#0B7285"><B>任何层都可依赖<BR/>零业务逻辑<BR/>零硬件依赖<BR/>不参与跨层判定</B></FONT>
+      </TD>
+    </TR>
+
+    <TR>
+      <TD BGCOLOR="#FFF3BF" ALIGN="LEFT"><FONT POINT-SIZE="14"><B>2 · Service</B></FONT><BR/><FONT POINT-SIZE="11">服务层</FONT></TD>
+      <TD BGCOLOR="#FFF9DB" ALIGN="LEFT"><FONT POINT-SIZE="12">与硬件无关的通用服务<B>与算法</B></FONT></TD>
+      <TD BGCOLOR="#FFF9DB" ALIGN="LEFT"><FONT POINT-SIZE="12">诊断、参数 / NVM 管理、协议栈适配、<BR/>OS 封装(OSIF)、<B>控制 / 信号处理算法核</B><BR/>（电机 FOC 控制律 / PID / 滤波 / 状态估计）</FONT></TD>
+    </TR>
+
+    <TR>
+      <TD BGCOLOR="#D8F3DC" ALIGN="LEFT"><FONT POINT-SIZE="14"><B>3 · HAL</B></FONT><BR/><FONT POINT-SIZE="11">硬件抽象层</FONT></TD>
+      <TD BGCOLOR="#EBFBEE" ALIGN="LEFT"><FONT POINT-SIZE="12">把“做什么”与<BR/>“用哪块硬件做”解耦</FONT></TD>
+      <TD BGCOLOR="#EBFBEE" ALIGN="LEFT"><FONT POINT-SIZE="12">每类外设一个抽象接口<BR/>（GPIO / ADC / PWM / CAN / 定时器 / 看门狗…）<BR/><B>If</B> 接口 .h　+　<B>Impl</B> 实现 .c</FONT></TD>
+    </TR>
+
+    <TR>
+      <TD BGCOLOR="#D0EBFF" ALIGN="LEFT"><FONT POINT-SIZE="14"><B>4 · CDD</B></FONT><BR/><FONT POINT-SIZE="11">复杂驱动层（可选）</FONT></TD>
+      <TD BGCOLOR="#E7F5FF" ALIGN="LEFT"><FONT POINT-SIZE="12">总线外挂芯片的专用驱动</FONT></TD>
+      <TD BGCOLOR="#E7F5FF" ALIGN="LEFT"><FONT POINT-SIZE="12">电源管理 IC、BMS 前端、传感器等驱动<BR/>（经 SPI / I2C / CAN）</FONT></TD>
+    </TR>
+
+    <TR>
+      <TD BGCOLOR="#E5DBFF" ALIGN="LEFT"><FONT POINT-SIZE="14"><B>5 · MCAL</B></FONT><BR/><FONT POINT-SIZE="11">微控制器抽象层</FONT></TD>
+      <TD BGCOLOR="#F3F0FF" ALIGN="LEFT"><FONT POINT-SIZE="12">片上外设寄存器级驱动</FONT></TD>
+      <TD BGCOLOR="#F3F0FF" ALIGN="LEFT"><FONT POINT-SIZE="12">芯片厂 / AUTOSAR MCAL<BR/>（多为 SDK 自带，不重造）</FONT></TD>
+    </TR>
+
+    <TR>
+      <TD BGCOLOR="#DEE2E6" ALIGN="LEFT"><FONT POINT-SIZE="14"><B>6 · OS / RTOS</B></FONT></TD>
+      <TD BGCOLOR="#F1F3F5" ALIGN="LEFT"><FONT POINT-SIZE="12">调度、任务、同步原语</FONT></TD>
+      <TD BGCOLOR="#F1F3F5" ALIGN="LEFT"><FONT POINT-SIZE="12">FreeRTOS / AUTOSAR OS、板级启动</FONT></TD>
+    </TR>
+
+  </TABLE>
+  >];
+}

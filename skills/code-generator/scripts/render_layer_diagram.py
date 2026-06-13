@@ -5,6 +5,8 @@
 绘图要求（详见 references/diagram-guide.md）：
 - 纵向逐层堆叠（layers 中“非横切”的层，按高→低），每层：左侧彩色竖标签(中文层名) + 顶部
   紫色层标题条(英文层名 + 前缀) + 层内模块卡片(渐变圆角块；可按 module 的 group 字段分组虚线框)。
+- peer_groups 中的层在同一水平带内并排绘制，表示架构平级；平级不表示互相依赖。
+- branch_layers 中的可选分支层缩进绘制；architecture_edges 以明确箭头显示实际合法依赖。
 - 横切层(layers.json 的 cross_cutting)**画成右侧竖条**，竖向**跨它的使用者层**，用虚线箭头连过去，
   不占纵向层序。使用者层 = 声明 deps 依赖了该横切层模块的那些层（自动推断；也可在 layers.json 用
   cross_spans 显式给定）。
@@ -44,6 +46,10 @@ class SVG:
                          '<path d="M0,0 L6.5,3 L0,6 z" fill="%s"/></marker>' % CROSS_ACCENT)
         self.defs.append('<marker id="arrR" markerWidth="9" markerHeight="9" refX="0.5" refY="3" orient="auto">'
                          '<path d="M6.5,0 L0,3 L6.5,6 z" fill="%s"/></marker>' % CROSS_ACCENT)
+        for marker, color in (("arrBlue", "#1976D2"), ("arrOrange", "#E65100"),
+                              ("arrTeal", "#00897B")):
+            self.defs.append(f'<marker id="{marker}" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto">'
+                             f'<path d="M0,0 L6.5,3 L0,6 z" fill="{color}"/></marker>')
 
     def grad(self, base):
         if base not in self._g:
@@ -70,6 +76,13 @@ class SVG:
         m = ' marker-end="url(#arr)" marker-start="url(#arrR)"' if marker_both else ' marker-end="url(#arr)"'
         self.body.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
                          f'stroke="{color}" stroke-width="1.4"{d}{m}/>')
+
+    def polyline(self, points, color, marker=None, dash=None, sw=2):
+        pts = " ".join(f"{x:.1f},{y:.1f}" for x, y in points)
+        d = f' stroke-dasharray="{dash}"' if dash else ''
+        m = f' marker-end="url(#{marker})"' if marker else ''
+        self.body.append(f'<polyline points="{pts}" fill="none" stroke="{color}" stroke-width="{sw}"'
+                         f' stroke-linejoin="round" stroke-linecap="round"{d}{m}/>')
 
     def out(self, w, h):
         return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">'
@@ -111,14 +124,26 @@ def main():
     spec = json.load(open(args.spec, encoding="utf-8"))
     order = layers_cfg["layers"]
     cross = layers_cfg.get("cross_cutting", [])
+    peer_groups = layers_cfg.get("peer_groups", [])
+    peer_group_labels = layers_cfg.get("peer_group_labels", {})
+    branch_layers = set(layers_cfg.get("branch_layers", []))
+    architecture_edges = [tuple(edge) for edge in layers_cfg.get("architecture_edges", [])]
+    edge_styles = layers_cfg.get("edge_styles", {})
     fpfx = layers_cfg.get("file_prefix", {})
     colors = layers_cfg.get("colors", {})
     labels = layers_cfg.get("labels", {})          # 层 key -> 显示名(如中文)；竖标签用它，缺省用 key
+    layer_info = layers_cfg.get("layer_info", {})
+    cross_content = layers_cfg.get("cross_content", {})
     cross_spans = layers_cfg.get("cross_spans", {})
     header_map = layers_cfg.get("header_map", {})
     mod2layer = module_layer_index(spec)
 
-    vertical = [l for l in order if l not in cross]      # 纵向层
+    vertical = [l for l in order if l not in cross]      # 纵向层（分支层仍保留顺序）
+    peer_of = {}
+    for group in peer_groups:
+        members = [l for l in group if l in vertical]
+        for member in members:
+            peer_of[member] = members
     cross_layers = []                                     # 横切层（来自 cross_cutting，去重保序）
     for c in cross:
         if c not in cross_layers:
@@ -158,27 +183,50 @@ def main():
     PANEL_X = 56
     CROSS_W = 132
     CROSS_GAP = 12
+    EDGE_GUTTER = 118 if architecture_edges else 0
     n_cross = max(len(cross_layers), 0)
     cross_total = (CROSS_W + CROSS_GAP) * n_cross if n_cross else 0
-    W = 760 + cross_total + 60
-    MAIN_RIGHT = W - 14 - cross_total
+    W = 760 + cross_total + EDGE_GUTTER + 60
+    MAIN_RIGHT = W - 14 - cross_total - EDGE_GUTTER
     PANEL_W = MAIN_RIGHT - PANEL_X
     PAD = 14; TITLE_H = 30; GRP_TITLE_H = 22; BLK_GAP = 10
     s = SVG(FONT)
     x = PANEL_X + PAD
     bounds = {}
+    boxes = {}
+    module_boxes = {}
     y = 52
 
-    def blocks(bx, by, bw, items, cols, base, h=44):
+    def blocks(layer, bx, by, bw, items, cols, base, h=44):
         n = len(items); rows = (n + cols - 1) // cols
         cw = (bw - BLK_GAP * (cols - 1)) / cols
         for i, it in enumerate(items):
             r, c = divmod(i, cols)
             xx = bx + c * (cw + BLK_GAP); yy = by + r * (h + BLK_GAP)
-            s.rect(xx, yy, cw, h, 7, s.grad(base), stroke="#9a9a9a", sw=1)
-            for li, ln in enumerate(str(it).split("\n")):
-                s.text(xx + cw / 2, yy + h / 2 + (li - (len(str(it).split("\n")) - 1) / 2) * 13, ln, size=11.5, fill="#1a1a1a")
+            item = it if isinstance(it, dict) else {"name": str(it)}
+            display = item.get("display", item["name"])
+            highlighted = bool(item.get("highlight"))
+            stroke = "#E65100" if highlighted else "#9a9a9a"
+            s.rect(xx, yy, cw, h, 7, s.grad(base), stroke=stroke, sw=2.2 if highlighted else 1)
+            lines = str(display).split("\n")
+            for li, ln in enumerate(lines):
+                s.text(xx + cw / 2, yy + h / 2 + (li - (len(lines) - 1) / 2) * 13,
+                       ln, size=11 if len(ln) > 18 else 11.5, fill="#1a1a1a",
+                       weight="bold" if highlighted else "normal")
+            module_boxes[(layer, item["name"])] = (xx, yy, xx + cw, yy + h)
         return rows * h + (rows - 1) * BLK_GAP
+
+    def responsibility(L, rx, ry, rw, rh, accent, compact=False):
+        info = layer_info.get(L, {})
+        lines = info.get("responsibility", ["职责待补充"])
+        s.rect(rx, ry, rw, rh, 8, lighten(accent, 0.92), stroke=accent, sw=1.2, dash="5,4")
+        s.text(rx + 10, ry + 13, "RESPONSIBILITY", size=8.5, fill=accent,
+               anchor="start", weight="bold")
+        line_gap = 16 if compact else 18
+        start_y = ry + 31
+        for li, line in enumerate(lines):
+            s.text(rx + rw / 2, start_y + li * line_gap, line,
+                   size=10.5 if compact else 11.5, fill="#34404a", weight="bold")
 
     def draw_layer(L, idx):
         nonlocal y
@@ -191,25 +239,18 @@ def main():
         s.text(PANEL_X + PANEL_W / 2, y0 + PAD + TITLE_H / 2, ttl, size=14, fill="#ffffff", weight="bold")
         cy = y0 + PAD + TITLE_H + 10
         mods = by_layer.get(L, [])
-        names = [m["name"] for m in mods] or ["（待补充模块）"]
-        # 按 group 分组？
-        groups = {}
-        for m in mods:
-            groups.setdefault(m.get("group"), []).append(m["name"])
-        if len(groups) > 1 or (len(groups) == 1 and None not in groups):
-            body_h = 0
-            for gname, gitems in groups.items():
-                cols = min(len(gitems), 6) or 1
-                gtitle = gname or "其它"
-                bh = blocks(x + 10, cy + body_h + GRP_TITLE_H, PANEL_W - 2 * PAD - 20, gitems, cols, fill, 40)
-                gh = GRP_TITLE_H + bh + 12
-                s.rect(x, cy + body_h, PANEL_W - 2 * PAD, gh, 9, "none", stroke=accent, sw=1.3, dash="5,4")
-                s.text(x + (PANEL_W - 2 * PAD) / 2, cy + body_h + GRP_TITLE_H / 2 + 3, gtitle, size=12, fill=accent, weight="bold")
-                body_h += gh + 10
-            body_h -= 10
-        else:
-            cols = min(len(names), 7) or 1
-            body_h = blocks(x, cy, PANEL_W - 2 * PAD, names, cols, fill, 44)
+        items = mods or [{"name": "TBD", "display": "（待补充模块）"}]
+        resp_w = 178
+        content_x = x + resp_w + 14
+        content_w = PANEL_W - 2 * PAD - resp_w - 14
+        cols = min(len(items), 4) or 1
+        rows = (len(items) + cols - 1) // cols
+        module_h = rows * 48 + (rows - 1) * BLK_GAP
+        body_h = max(82, module_h + 22)
+        responsibility(L, x, cy, resp_w, body_h, accent)
+        s.text(content_x, cy + 9, layer_info.get(L, {}).get("content_label", "TYPICAL CONTENT"),
+               size=8.5, fill=accent, anchor="start", weight="bold")
+        blocks(L, content_x, cy + 22, content_w, items, cols, fill, 48)
         total = PAD + TITLE_H + 10 + body_h + PAD
         s.rect(PANEL_X, y0, PANEL_W, total, 12, "none", stroke=accent, sw=2)
         # 左侧竖标签（显示名优先用 labels）
@@ -219,10 +260,185 @@ def main():
         for i, ch in enumerate(chars):
             s.text(28, st + i * ch_gap, ch, size=14, fill="#ffffff", weight="bold")
         bounds[L] = (y0, y0 + total)
+        boxes[L] = (PANEL_X, y0, PANEL_X + PANEL_W, y0 + total)
         y = y0 + total + 16
 
+    def draw_branch_layer(L, idx):
+        nonlocal y
+        fill, accent = col(L, idx)
+        y0 = y
+        branch_x = PANEL_X + PANEL_W * 0.52
+        branch_w = PANEL_W * 0.48
+        items = by_layer.get(L, []) or [{"name": "TBD", "display": "（待补充模块）"}]
+        cols = 2
+        rows = (len(items) + cols - 1) // cols
+        resp_h = 68
+        body_h = rows * 42 + (rows - 1) * BLK_GAP
+        total = PAD + TITLE_H + 8 + resp_h + 8 + body_h + PAD
+
+        s.rect(branch_x, y0, branch_w, total, 12, "none", stroke=accent, sw=2)
+        s.rect(branch_x + PAD, y0 + PAD, branch_w - 2 * PAD, TITLE_H, 7,
+               "url(#tbar)", stroke="#7E3F96", sw=1)
+        pfx = fpfx.get(L)
+        ttl = f"{L}（前缀 {pfx}）" if pfx else L
+        s.text(branch_x + branch_w / 2, y0 + PAD + TITLE_H / 2, ttl,
+               size=13, fill="#ffffff", weight="bold")
+        resp_y = y0 + PAD + TITLE_H + 8
+        responsibility(L, branch_x + PAD, resp_y, branch_w - 2 * PAD, resp_h, accent, compact=True)
+        blocks(L, branch_x + PAD, resp_y + resp_h + 8, branch_w - 2 * PAD,
+               items, cols, fill, 42)
+
+        s.rect(8, y0, 40, total, 8, s.grad(accent), stroke="#7a7a7a", sw=1)
+        chars = list(labels.get(L, L)); ch_gap = min(22, (total - 16) / max(len(chars), 1))
+        st = y0 + total / 2 - ch_gap * (len(chars) - 1) / 2
+        for ci, ch in enumerate(chars):
+            s.text(28, st + ci * ch_gap, ch, size=13, fill="#ffffff", weight="bold")
+
+        bounds[L] = (y0, y0 + total)
+        boxes[L] = (branch_x, y0, branch_x + branch_w, y0 + total)
+        y = y0 + total + 16
+
+    def draw_peer_row(group, idx):
+        nonlocal y
+        y0 = y
+        count = len(group)
+        inner_gap = 12
+        inner_x0 = PANEL_X + PAD
+        inner_w = (PANEL_W - 2 * PAD - inner_gap * (count - 1)) / count
+        module_rows = []
+        for L in group:
+            items = by_layer.get(L, []) or [{"name": "TBD", "display": "（待补充模块）"}]
+            cols = min(len(items), 3) or 1
+            rows = (len(items) + cols - 1) // cols
+            module_rows.append((items, cols, rows))
+        body_h = max(rows * 44 + (rows - 1) * BLK_GAP for _, _, rows in module_rows)
+        resp_h = 66
+        hardware_h = 34
+        total = PAD + TITLE_H + 8 + resp_h + 8 + body_h + 12 + 24 + hardware_h + PAD
+
+        s.rect(PANEL_X, y0, PANEL_W, total, 12, "#fafafa", stroke="#58636f", sw=2)
+        group_key = "|".join(group)
+        group_label = peer_group_labels.get(group_key, "基础软件平台")
+        s.rect(8, y0, 40, total, 8, s.grad("#58636f"), stroke="#7a7a7a", sw=1)
+        chars = list(group_label); ch_gap = min(22, (total - 16) / max(len(chars), 1))
+        st = y0 + total / 2 - ch_gap * (len(chars) - 1) / 2
+        for ci, ch in enumerate(chars):
+            s.text(28, st + ci * ch_gap, ch, size=13, fill="#ffffff", weight="bold")
+
+        for gi, L in enumerate(group):
+            fill, accent = col(L, idx + gi)
+            ix = inner_x0 + gi * (inner_w + inner_gap)
+            s.rect(ix, y0 + PAD, inner_w, TITLE_H, 7, s.grad(accent), stroke=accent, sw=1)
+            pfx = fpfx.get(L)
+            ttl = f"{L}（前缀 {pfx}）" if pfx else L
+            s.text(ix + inner_w / 2, y0 + PAD + TITLE_H / 2, ttl, size=13, fill="#ffffff", weight="bold")
+            items, cols, _ = module_rows[gi]
+            resp_y = y0 + PAD + TITLE_H + 8
+            responsibility(L, ix, resp_y, inner_w, resp_h, accent, compact=True)
+            blocks(L, ix, resp_y + resp_h + 8, inner_w, items, cols, fill, 44)
+            bounds[L] = (y0, y0 + total)
+            boxes[L] = (ix, y0, ix + inner_w, y0 + total)
+
+        note_y = y0 + PAD + TITLE_H + 8 + resp_h + 8 + body_h + 12
+        s.text(PANEL_X + PANEL_W / 2, note_y + 10, "平级 · 互不依赖", size=12, fill="#58636f", weight="bold")
+        hw_y = note_y + 24
+        s.rect(PANEL_X + PAD, hw_y, PANEL_W - 2 * PAD, hardware_h, 7,
+               s.grad("#9aa3aa"), stroke="#58636f", sw=1)
+        for gi, L in enumerate(group):
+            ix = inner_x0 + gi * (inner_w + inner_gap)
+            arrow_x = ix + inner_w / 2
+            s.polyline([(arrow_x, note_y - 4), (arrow_x, hw_y)],
+                       "#1976D2", marker="arrBlue", sw=1.8)
+        s.text(PANEL_X + PANEL_W / 2, hw_y + hardware_h / 2,
+               "共同直接运行于硬件 / MCU 内核与片上外设", size=12, fill="#ffffff", weight="bold")
+        y = y0 + total + 16
+
+    consumed_peers = set()
     for i, L in enumerate(vertical):
-        draw_layer(L, i)
+        if L in consumed_peers:
+            continue
+        if L in branch_layers:
+            draw_branch_layer(L, i)
+            continue
+        group = peer_of.get(L)
+        if group and len(group) > 1:
+            draw_peer_row(group, i)
+            consumed_peers.update(group)
+        else:
+            draw_layer(L, i)
+
+    # ---- 架构结构边：明确显示合法调用拓扑 ----
+    def edge_style(src, dst):
+        cfg = edge_styles.get(f"{src}>{dst}", {})
+        color = cfg.get("color", "#1976D2")
+        marker = {"#e65100": "arrOrange", "#00897b": "arrTeal"}.get(color.lower(), "arrBlue")
+        return cfg, color, marker
+
+    for src, dst in architecture_edges:
+        if src not in boxes or dst not in boxes:
+            continue
+        cfg, color, marker = edge_style(src, dst)
+        sx0, sy0, sx1, sy1 = module_boxes.get((src, cfg.get("source_module")), boxes[src])
+        tx0, ty0, tx1, ty1 = module_boxes.get((dst, cfg.get("target_module")), boxes[dst])
+        route = cfg.get("route", "direct")
+        label = cfg.get("label", "")
+
+        if route == "module_direct":
+            start_x = sx0 + (sx1 - sx0) / 2
+            target_x = tx0 + (tx1 - tx0) / 2
+            mid_y = (sy1 + ty0) / 2
+            s.polyline([(start_x, sy1), (start_x, mid_y), (target_x, mid_y), (target_x, ty0)],
+                       color, marker=marker, sw=2.4)
+            if label:
+                s.text(start_x + 8, sy1 + 8, label,
+                       size=10.5, fill=color, weight="bold")
+        elif route == "side_direct":
+            route_x = MAIN_RIGHT + 18
+            start_y = sy0 + (sy1 - sy0) / 2
+            target_y = ty0 + PAD + TITLE_H / 2
+            s.polyline([(sx1, start_y), (route_x, start_y), (route_x, target_y), (tx1, target_y)],
+                       color, marker=marker, sw=2.4)
+            if label:
+                s.text(route_x - 6, (start_y + target_y) / 2, label,
+                       size=10.5, fill=color, anchor="end", weight="bold")
+        elif route == "right":
+            route_x = MAIN_RIGHT + EDGE_GUTTER - 20
+            start_x = sx0 + (sx1 - sx0) * float(cfg.get("start_ratio", 0.75))
+            start_y = sy1
+            target_y = ty0 + TITLE_H / 2 + PAD
+            points = [(start_x, start_y), (start_x, start_y + 8), (route_x, start_y + 8),
+                      (route_x, target_y),
+                      (tx1, target_y)]
+            s.polyline(points, color, marker=marker, sw=2.2)
+            if label:
+                s.text(route_x - 6, start_y + 20, label,
+                       size=10.5, fill=color, anchor="end", weight="bold")
+        elif route == "branch":
+            start_x = sx0 + (sx1 - sx0) * float(cfg.get("start_ratio", 0.72))
+            target_x = tx0 + (tx1 - tx0) * 0.50
+            mid_y = ty0 - 8
+            s.polyline([(start_x, sy1), (start_x, mid_y), (target_x, mid_y), (target_x, ty0)],
+                       color, marker=marker, sw=2.2)
+            if label:
+                label_x = tx0 - 92
+                for li, text_line in enumerate(label.split("\n")):
+                    s.text(label_x, ty0 + 20 + li * 14, text_line,
+                           size=10.5, fill=color, weight="bold")
+        elif route == "merge_left":
+            start_x = sx0
+            start_y = sy0 + (sy1 - sy0) * 0.52
+            target_x = tx0 + (tx1 - tx0) * 0.76
+            mid_y = ty0 - 8
+            s.polyline([(start_x, start_y), (target_x, start_y), (target_x, mid_y), (target_x, ty0)],
+                       color, marker=marker, sw=2.2)
+        else:
+            start_x = sx0 + (sx1 - sx0) * float(cfg.get("start_ratio", 0.25))
+            target_x = tx0 + (tx1 - tx0) * float(cfg.get("target_ratio", 0.50))
+            s.polyline([(start_x, sy1), (start_x, ty0)], color, marker=marker, sw=2.2)
+            if label:
+                for li, text_line in enumerate(label.split("\n")):
+                    s.text(start_x - 4, sy1 + 13 + li * 13, text_line,
+                           size=10.5, fill=color, anchor="end", weight="bold")
 
     # ---- 横切层竖条 ----
     for ci, c in enumerate(cross_layers):
@@ -231,24 +447,33 @@ def main():
             continue
         top = min(bounds[u][0] for u in us)
         bot = max(bounds[u][1] for u in us)
-        cx = MAIN_RIGHT + CROSS_GAP + ci * (CROSS_W + CROSS_GAP)
+        cx = MAIN_RIGHT + EDGE_GUTTER + CROSS_GAP + ci * (CROSS_W + CROSS_GAP)
         s.rect(cx, top, CROSS_W, bot - top, 12, s.grad("#F1E3F7"), stroke=CROSS_ACCENT, sw=2, dash="6,4")
         s.text(cx + CROSS_W / 2, top + 16, f"横切层 {labels.get(c, c)}", size=13, fill=CROSS_ACCENT, weight="bold")
         s.text(cx + CROSS_W / 2, top + 31, "(跨多层 · 任意层可用)", size=9, fill=CROSS_ACCENT)
-        cmods = [m["name"] for m in by_layer.get(c, [])] or [c]
+        content = cross_content.get(c, {})
+        cmods = [content.get("title", c)]
         by_ = top + 46
         for nm in cmods:
-            s.rect(cx + 11, by_, CROSS_W - 22, 50, 8, s.grad(CROSS_FILL), stroke="#8a6aa0", sw=1)
-            s.text(cx + CROSS_W / 2, by_ + 25, nm, size=11.5, fill="#1a1a1a", weight="bold")
-            by_ += 60
+            lines = content.get("lines", [])
+            card_h = 58 + 16 * len(lines)
+            s.rect(cx + 11, by_, CROSS_W - 22, card_h, 8, s.grad(CROSS_FILL), stroke="#8a6aa0", sw=1)
+            s.text(cx + CROSS_W / 2, by_ + 21, nm, size=12, fill="#5c2476", weight="bold")
+            for li, line in enumerate(lines):
+                s.text(cx + CROSS_W / 2, by_ + 43 + li * 16, line, size=10.5, fill="#3b3040")
+            by_ += card_h + 12
         # 使用者层 -> 竖条 的虚线箭头
+        arrow_ys = set()
         for u in us:
             t, b = bounds[u]; my = (t + b) / 2
+            if my in arrow_ys:
+                continue
+            arrow_ys.add(my)
             s.line(MAIN_RIGHT, my, cx, my, CROSS_ACCENT, dash="5,3", marker_both=True)
 
     # 标题
     s.text(W / 2, 24, args.title, size=18, fill="#333", weight="bold")
-    s.text(W / 2, 42, "（纵向=分层，右侧竖条=横切层；数据源自 layers.json + module_spec.json）", size=10.5, fill="#777")
+    s.text(W / 2, 42, "（纵向=分层，并排=平级隔离，右侧竖条=横切层；数据源自配置）", size=10.5, fill="#777")
 
     H = y + 8
     svg_text = s.out(W, int(H))

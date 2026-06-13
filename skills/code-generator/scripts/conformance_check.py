@@ -152,7 +152,7 @@ def main():
     lay, _ = run_json("check_layering.py", "--root", root, "--layers", args.layers)
     vc = lay.get("violation_count", -1)
     unmapped = lay.get("unmapped_files", [])
-    checks.append(("A-分层", "无向上/跳层 include", vc == 0,
+    checks.append(("A-分层", "无向上/未声明跳层/平级依赖 include", vc == 0,
                    f"违规 {vc} 条" + (f"；{lay['violations'][:3]}" if vc else "")))
     checks.append(("D-目录", "所有源文件均归层（无层外游离）", len(unmapped) == 0,
                    f"未归层 {len(unmapped)} 个" + (f"：{unmapped[:5]}" if unmapped else "")))

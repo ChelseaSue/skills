@@ -7,10 +7,20 @@
 每项标注：**[A]** 自动可查（脚本）/ **[M]** 人工核查。期望全部 ✅；未过项要么修代码、要么明确记为已知偏离。
 
 ## A. 分层（可移植）
+- [M] 若 SAD 与 skill 默认架构存在差异，已有用户明确选择记录（采用 SAD / 采用 skill 默认架构），且选择发生在
+  `layers.json`、架构图和代码生成之前；无“生成者自行决定”的情况。
+- [M] 架构决策记录至少包含 `architecture_source`、用户确认、日期、差异范围；全部生成产物与所选架构一致。
 - [A] 不存在**向上 include**：任何模块都不 `#include` 更高层头。（`check_layering.py` 0 违规）
-- [A] 不存在**跳层 include**：上层只够相邻下层 + 同层 + 横切层（strict_adjacent=true 时）。
+- [A] 不存在**未声明的跳层 include**：上层只够相邻下层、`architecture_edges`、同层和横切层
+  （`strict_adjacent=true` 时）；默认允许片内 `HAL→MCAL` 与外挂芯片 `HAL→CDD→MCAL`。
+- [A] 采用 skill 默认架构时，App 不直接依赖 HAL/CDD/MCAL；硬件访问经
+  `App→Native/Device Service→HAL`。
+- [A] `Service→Os` 的实际模块依赖仅来自 OSIF；Native/Device Service 和其它 Service 模块不得直接 include
+  OS/RTOS 头文件，除非 SAD 明确批准并记录。
+- [A] `peer_groups` 中不同层之间不存在未声明依赖；默认 `MCAL→OS` 与 `OS→MCAL` 均为 0。
 - [M] 硬件相关代码全部收敛在抽象层（HAL/CDD）接口之后；上层无寄存器直操作、无芯片头直 include。
-- [M] `layers.json` 的层序、横切层、放行边与 SAD 分层架构图一致。
+- [M] `layers.json` 的层序、平级组、横切层、`architecture_edges`、放行边与 SAD 分层架构图一致；MCAL 与 OS/RTOS
+  在图中平级并共同连接硬件，结构边与架构偏离未混用。
 
 ## B. 模块化（高内聚低耦合）
 - [A] 同层模块间无私有头互包（`check_layering.py` 同层耦合告警为 0 或均经公开接口/总线）。
@@ -30,6 +40,8 @@
 - [M] 每层、每模块各有独立文件夹；模块文件 `<前缀><Module>.h/.c/_Cfg.h` 收在自己文件夹内（除非显式 flat 例外）。
 - [M] 公共数据结构（typedef/enum/struct）定义在模块 `.h`；私有类型留在 `.c`。命名遵循项目 `NameRules.txt`/SAD。
 - [M] 已用 `render_layer_diagram.py` 出分层架构图，且与 SAD 分层图一致（层序、横切层画成竖条跨使用者层、每层模块齐全）。见 `diagram-guide.md`。
+- [M] SAD 无架构差异、未描述架构或用户选择 skill 默认架构时，架构图、`layers.json`、`module_spec.json` 与
+  `assets/default-software-layered-model.svg` 的架构语义一致；用户选择 SAD 时，三者与 SAD 及决策记录一致。
 
 ## E. MISRA C:2012
 - [A] `run_misra.py`（cppcheck --addon=misra）的 Mandatory/Required 违规为 0，或全部对应到带理由的 deviation。

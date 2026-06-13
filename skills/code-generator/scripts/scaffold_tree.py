@@ -116,7 +116,7 @@ def c_text(m, today):
             lines.append("    /* TBD: 实现逻辑——对齐 SAD 状态机/时序；入参校验；单一退出。 */")
             lines.append("    return status;" if ret == "IF_Status_t" else "    return ret;")
         else:
-            lines.append("    /* TBD: 实现逻辑——对齐 SAD；同层协作走总线/公开接口，硬件经相邻下层接口。 */")
+            lines.append("    /* TBD: 对齐 SAD；同层走总线/公开接口，硬件经相邻下层或 architecture_edges 接口。 */")
         lines.append("}")
         lines.append("")
     return "\n".join(lines) + "\n"
