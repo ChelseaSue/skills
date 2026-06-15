@@ -117,7 +117,9 @@ def build_header_index(root):
 
 
 def reuse_of_basename(basename, reuse_by_module):
-    """按文件名 stem 找模块的复用分类（模块名即 stem）。无法分类返回 None。"""
+    """按文件名 stem 找模块的复用分类（模块名即 stem）。无法分类返回 None。
+    约定：spec 里登记的模块名不以 _Cfg/_contract 结尾——这两个后缀表示模块的配置/契约文件，
+    不是模块身份；据此把 Foo_Cfg.h / Foo_contract.h 都归到模块 Foo。"""
     stem = basename
     for ext in (".h", ".c"):
         if stem.endswith(ext):
@@ -196,7 +198,7 @@ def main():
                     if cur_reuse == "reusable" and tgt_reuse == "project-specific":
                         violations.append({
                             "file": rel, "line": ln, "include": inc,
-                            "from": cur_layer, "to": "", "kind": "REUSE",
+                            "from": cur_layer, "to": base, "kind": "REUSE",
                             "msg": f"复用反向依赖：reusable 模块 {os.path.basename(rel)} 依赖 project-specific 模块 {base}（破坏跨项目移植，禁止）"})
                 # resolve target layer: prefer real file's path, else header_map/basename
                 tgt_layer = None

@@ -12,12 +12,14 @@ LAYERS = {
 SPEC = {"modules": [
     {"name": "FocCore", "layer": "Service", "reuse": "reusable"},
     {"name": "ProjOrch", "layer": "Service", "reuse": "project-specific"},
+    {"name": "MathLib", "layer": "Service", "reuse": "reusable"},
 ]}
 
 
 def write(path, text):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    open(path, "w").write(text)
+    with open(path, "w") as f:
+        f.write(text)
 
 
 class CheckReuseTest(unittest.TestCase):
@@ -26,8 +28,10 @@ class CheckReuseTest(unittest.TestCase):
         self.layers = os.path.join(self.d, "layers.json")
         self.spec = os.path.join(self.d, "spec.json")
         self.code = os.path.join(self.d, "code")
-        json.dump(LAYERS, open(self.layers, "w"))
-        json.dump(SPEC, open(self.spec, "w"))
+        with open(self.layers, "w") as f:
+            json.dump(LAYERS, f)
+        with open(self.spec, "w") as f:
+            json.dump(SPEC, f)
         write(os.path.join(self.code, "Source/Service/ProjOrch/ProjOrch.h"), "#ifndef P\n#define P\n#endif\n")
 
     def _run(self, c_body):
@@ -47,6 +51,12 @@ class CheckReuseTest(unittest.TestCase):
         write(os.path.join(self.code, "Source/Service/Other/Other.h"), "#ifndef O\n#define O\n#endif\n")
         # Other 未在 spec -> 不分类 -> 不触发 REUSE
         r = self._run('#include "Other.h"\n')
+        kinds = [v["kind"] for v in json.loads(r.stdout)["violations"]]
+        self.assertNotIn("REUSE", kinds)
+
+    def test_reusable_including_classified_reusable_is_ok(self):
+        write(os.path.join(self.code, "Source/Service/MathLib/MathLib.h"), "#ifndef M\n#define M\n#endif\n")
+        r = self._run('#include "MathLib.h"\n')
         kinds = [v["kind"] for v in json.loads(r.stdout)["violations"]]
         self.assertNotIn("REUSE", kinds)
 
