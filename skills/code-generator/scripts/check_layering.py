@@ -116,11 +116,25 @@ def build_header_index(root):
     return idx
 
 
+def reuse_of_basename(basename, reuse_by_module):
+    """按文件名 stem 找模块的复用分类（模块名即 stem）。无法分类返回 None。"""
+    stem = basename
+    for ext in (".h", ".c"):
+        if stem.endswith(ext):
+            stem = stem[:-len(ext)]
+            break
+    for suf in ("_Cfg", "_contract"):
+        if stem.endswith(suf):
+            stem = stem[:-len(suf)]
+    return reuse_by_module.get(stem)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", required=True)
     ap.add_argument("--layers", required=True)
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--modules", help="可选 module_spec.json：启用 reusable→project-specific 反向依赖门禁")
     args = ap.parse_args()
 
     root = os.path.abspath(args.root)
@@ -131,6 +145,19 @@ def main():
     allow = {(a, b) for a, b in cfg["allow_edges"]}
     strict = bool(cfg["strict_adjacent"])
     hdr_index = build_header_index(root)
+
+    reuse_by_module = {}
+    if args.modules:
+        with open(args.modules, encoding="utf-8") as mf:
+            spec = json.load(mf)
+        file_prefix = cfg.get("file_prefix", {})
+        default_reuse = {"App": "project-specific"}
+        for m in spec.get("modules", []):
+            name = m["name"]
+            pfx = file_prefix.get(m["layer"], "")
+            if pfx and not name.startswith(pfx):
+                name = pfx + name
+            reuse_by_module[name] = m.get("reuse") or default_reuse.get(m["layer"], "reusable")
 
     violations = []
     files_scanned = 0
@@ -163,6 +190,14 @@ def main():
                     continue
                 inc = m.group(1)
                 base = os.path.basename(inc)
+                if reuse_by_module:
+                    cur_reuse = reuse_of_basename(os.path.basename(rel), reuse_by_module)
+                    tgt_reuse = reuse_of_basename(base, reuse_by_module)
+                    if cur_reuse == "reusable" and tgt_reuse == "project-specific":
+                        violations.append({
+                            "file": rel, "line": ln, "include": inc,
+                            "from": cur_layer, "to": "", "kind": "REUSE",
+                            "msg": f"复用反向依赖：reusable 模块 {os.path.basename(rel)} 依赖 project-specific 模块 {base}（破坏跨项目移植，禁止）"})
                 # resolve target layer: prefer real file's path, else header_map/basename
                 tgt_layer = None
                 if base in hdr_index:
