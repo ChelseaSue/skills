@@ -67,8 +67,8 @@
 工作流步骤修复后重跑。
 
 ## H. 跨项目移植/复用（reusable 模块）
-- [ ] 每个模块在 `module_spec` 有明确 `reuse` 分类（或接受层默认），App 顶层编排为 project-specific。
-- [ ] `check_layering.py --modules` 跑过，无 `REUSE` 违规（reusable 未依赖 project-specific）。
-- [ ] reusable 模块的横切语义收在 `<Module>_contract.h`，未直接引用项目专属全局 ID。
-- [ ] reusable 模块文件夹存在 `<Module>_port.md`，接驳点（Impl/Cfg/信号 ID/前缀）已按本项目填写。
-- [ ] port.md 第 4 节追溯 ID 已对新项目重映射（移植场景）。
+- [M] 每个模块在 `module_spec` 有明确 `reuse` 分类（或接受层默认），App 顶层编排为 project-specific。
+- [A] `check_layering.py --modules` 跑过，无 `REUSE` 违规（reusable 未依赖 project-specific）。
+- [M] reusable 模块的横切语义收在 `<Module>_contract.h`，未直接引用项目专属全局 ID。
+- [M] reusable 模块文件夹存在 `<Module>_port.md`，接驳点（Impl/Cfg/信号 ID/前缀）已按本项目填写。
+- [M] port.md 第 4 节追溯 ID 已对新项目重映射（移植场景）。
