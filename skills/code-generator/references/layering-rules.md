@@ -255,3 +255,28 @@ Hal 与 App 之间**没有任何编译依赖**；信息上行了，依赖没上�
    未声明结构边 → 平级依赖（错）；`strict_adjacent` 下目标低超过一级且不在 `architecture_edges`/`allow_edges`/
    `cross_cutting` → 跳层（错）；结构边、批准偏离和横切层放行；同一层内部 include 放行（语义解耦靠评审）。
 4. 输出每条违规的 `文件 → 被包含头（当前层→目标层，原因）`，并以非零退出码让门禁失败。
+
+## 8. 跨项目移植/复用（reusable vs project-specific）
+
+目标：让 HAL/Service/App 各层模块在「新项目有同样需求」时能从旧项目直接移植，而不是每次重写。手法是**显式分类 + 对可复用模块加护栏 + 一条机检门禁**。
+
+### 8.1 分类与标注
+- 在 `module_spec` 给每个模块加 `reuse`：`reusable` | `project-specific`。缺省按层默认：**App → project-specific，其它层 → reusable**。
+- 各层典型：
+  - **HAL**：`If/` 接口头是 reusable（硬件无关）；`Impl/` 与 `*_Cfg.h` 是 project-specific（板级/SDK 绑定）。
+  - **Service**：算法核（FOC/PID/滤波）、通用协议栈、诊断/参数框架 → reusable；绑定本项目业务语义的 Native/Device Service → project-specific。
+  - **App**：顶层编排/主状态机/任务调度强制 project-specific（它就是把 reusable 部件组装成本项目的地方）；可复用的业务子功能（通用故障管理、参数管理、按键/LED 行为库等）单独切模块后可标 reusable。
+
+### 8.2 reusable 模块四条护栏
+1. **反向依赖禁止（机检硬挡）**：reusable 模块**不得 `#include` 任何 project-specific 模块**的头。与「不向上依赖」同构——一旦反向依赖，模块就被钉死在本项目，无法移植。`check_layering.py --modules <module_spec.json>` 据此判 `REUSE` 违规并门禁失败。
+2. **横切依赖收敛为自包含契约**：reusable 用到的横切语义（信号/事件 ID、Cfg 默认、返回码扩展）收进自己文件夹的 `<Module>_contract.h`，不直接引用项目全局专属 ID；共用只准依赖**稳定横切**（`IF_Types` 稳定返回码、`Bus` 注册 API 本身）。→ 整个文件夹可搬走编译。
+3. **可选注入**：配置量大或需运行期替换的 reusable 模块，把横切依赖在 `<Module>_Init(const <Module>Cfg_t* cfg, ...)` 注入，模块内零项目全局引用。
+4. **移植参考说明**：每个 reusable 模块文件夹带 `<Module>_port.md`（scaffold 自动生成、预填已知信息，**不机检、不硬挡**，纯给移植者当接驳点清单）。
+
+### 8.3 组装方向
+- **project-specific 可以依赖 reusable（合法）；reusable 依赖 project-specific（门禁失败）。** 这正是「App 顶层编排调用 reusable 子功能」的合法路径。
+
+### 8.4 机检边界（诚实划线）
+- **硬挡**：reusable `#include` project-specific（`REUSE` 违规，非零退出）。
+- **自动生成、不挡**：`<Module>_contract.h` 占位、`<Module>_port.md`。
+- **靠 conformance 人工核**：port.md 接驳点是否填全填对、追溯 ID 的新项目重映射、自包含程度是否足够。

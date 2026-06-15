@@ -127,3 +127,26 @@ IF_Status_t <Module>_DoSomething(uint16_t arg)
 - **公共数据结构进头文件**：模块对上层暴露的 `typedef`/`enum`/`struct` 写在 `.h`（契约的一部分）；模块**私有**的
   类型/状态留在 `.c` 里。数据传递守 `layering-rules.md §6`：优先参数/返回值，复杂数据 `const T*` 入参 / `T*` 出参，
   不用裸 `extern` 全局，跨模块共享走总线或访问函数。
+
+## reusable 模块附加文件（scaffold 自动生成）
+
+仅当模块 `reuse: reusable` 时，scaffold 在模块文件夹内额外生成下面两个文件。
+
+### `<Module>_contract.h`（自包含横切契约）
+
+```c
+/*!
+** @file    <Module>_contract.h
+** @brief   <Module> 自包含横切契约：本模块用到的信号/事件 ID、Cfg 默认、返回码扩展集中于此，
+**          整个模块文件夹可整体移植。只依赖稳定横切（IF_Types 返回码、Bus 注册 API）。
+*/
+#ifndef <MODULE>_CONTRACT_H_
+#define <MODULE>_CONTRACT_H_
+#include "IF_Types.h"
+/* TBD: 本模块自有的信号/事件 ID 枚举、Cfg 默认值、返回码扩展。移植时只动这里与 Impl/Cfg。 */
+#endif /* <MODULE>_CONTRACT_H_ */
+```
+
+### `<Module>_port.md`（移植参考说明）
+
+固定五节：1. 模块身份；2. 依赖（自带 / 需新项目提供）；3. 需重新适配的接驳点（Impl、Cfg、信号 ID、前缀的方括号勾选项）；4. 追溯重映射（旧 SRS ID → 新项目 SRS ID）；5. 主机单测打桩点。由 scaffold 预填层/前缀/SRS ID。

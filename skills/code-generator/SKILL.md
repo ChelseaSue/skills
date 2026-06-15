@@ -236,5 +236,6 @@ python3 scripts/conformance_check.py --root <代码根> --spec <module_spec.json
 - `scaffold_tree.py` — 按 module_spec + layers 生成分层目录与模块骨架（脚手架模式）。
 - `render_layer_diagram.py` — 按 module_spec + layers 出卡片风格分层架构图（横切层自动画成竖条跨使用者层）；SVG，装 cairosvg 出 PNG。
 - `check_layering.py` — 静态核查 include 依赖是否守层（相邻下层/架构边/同层/横切，禁向上、禁未声明跳层）。
+- 跨项目移植：`module_spec` 的 `reuse`（reusable/project-specific）分类——reusable 模块自动生成 `<Module>_contract.h`/`<Module>_port.md`，且 `check_layering.py --modules` 硬挡其依赖 project-specific 模块（详见 layering-rules §8）。
 - `run_misra.py` — `cppcheck --addon=misra` 包装，汇总 MISRA 违规。
 - `conformance_check.py` — 跑完整一致性检查清单，输出通过/未通过+证据报告。
