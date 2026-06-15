@@ -56,13 +56,13 @@ def contract_text(m):
     return "\n".join(lines) + "\n"
 
 
-def port_md_text(m, today):
+def port_md_text(m):
     mod = m["name"]
     impls = ", ".join(m.get("implements", [])) or "（待补充需求 ID）"
     return f"""# {mod} 移植清单（参考说明，自动生成）
 
 ## 1. 模块身份
-- 层：{m['layer']}　复用类型：reusable　对应 SRS 需求 ID（旧项目）：{impls}
+- 层：{m['layer']}　复用类型：{reuse_of(m)}　对应 SRS 需求 ID（旧项目）：{impls}
 
 ## 2. 依赖
 - 自带：{mod}_contract.h、{mod}.h/.c、本模块单测
@@ -212,7 +212,7 @@ def main():
         }
         if reuse_of(m) == "reusable":
             files[os.path.join(out, hdr_dir, f"{mod}_contract.h")] = contract_text(m)
-            files[os.path.join(out, hdr_dir, f"{mod}_port.md")] = port_md_text(m, today)
+            files[os.path.join(out, hdr_dir, f"{mod}_port.md")] = port_md_text(m)
         planned.append((mod, files))
 
     for mod, files in planned:

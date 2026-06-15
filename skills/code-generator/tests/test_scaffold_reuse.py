@@ -22,8 +22,10 @@ class ScaffoldReuseTest(unittest.TestCase):
         self.layers = os.path.join(self.d, "layers.json")
         self.spec = os.path.join(self.d, "spec.json")
         self.out = os.path.join(self.d, "code")
-        json.dump(LAYERS, open(self.layers, "w"))
-        json.dump(SPEC, open(self.spec, "w"))
+        with open(self.layers, "w") as f:
+            json.dump(LAYERS, f)
+        with open(self.spec, "w") as f:
+            json.dump(SPEC, f)
         subprocess.run([sys.executable, SCAFFOLD, "--spec", self.spec,
                         "--layers", self.layers, "--out", self.out], check=True)
 
