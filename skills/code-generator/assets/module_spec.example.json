@@ -15,6 +15,7 @@
       "name": "MainOrchestrator",
       "display": "主编排 / 状态机",
       "layer": "App",
+      "reuse": "project-specific",
       "brief": "组织业务流程与系统运行状态",
       "implements": ["EXM_SRS_011"],
       "deps": ["Svc_NativeDeviceService.h"],
@@ -51,6 +52,7 @@
       "name": "ParameterNvm",
       "display": "参数 / NVM",
       "layer": "Service",
+      "reuse": "reusable",
       "brief": "参数管理与非易失存储服务",
       "implements": [],
       "deps": ["IF_Types.h"]

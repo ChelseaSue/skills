@@ -16,6 +16,7 @@
           "display": {"type": "string", "description": "可选：仅用于架构图的显示名称，可含换行，不影响代码文件名"},
           "highlight": {"type": "boolean", "description": "可选：在架构图中突出关键能力门面或关键模块"},
           "layer": {"type": "string", "description": "所属层，必须是 layers.json 的 layers 之一"},
+          "reuse": {"type": "string", "enum": ["reusable", "project-specific"], "description": "可选：跨项目复用分类。缺省按层默认（App→project-specific，其它层→reusable）。reusable 模块会自动生成 <Module>_contract.h 与 <Module>_port.md，且不得 #include 任何 project-specific 模块的头（门禁硬挡）"},
           "dir": {"type": "string", "description": "可选：显式相对目录；缺省则按层基目录/模块名派生"},
           "flat": {"type": "boolean", "description": "可选：true 则文件直接放层基目录，不建模块子目录"},
           "hal_split": {"type": "boolean", "description": "可选：true 则头+cfg 放 <base>/If，.c 放 <base>/Impl（HAL 可注入接口范式）"},
