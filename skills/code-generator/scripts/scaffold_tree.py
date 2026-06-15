@@ -35,6 +35,53 @@ def guard(name):
     return "".join(c if c.isalnum() else "_" for c in name).upper().strip("_") + "_H_"
 
 
+_DEFAULT_REUSE = {"App": "project-specific"}
+
+
+def reuse_of(m):
+    """模块的复用分类：显式 reuse 字段优先，否则按层默认（App→project-specific，其它→reusable）。"""
+    return m.get("reuse") or _DEFAULT_REUSE.get(m["layer"], "reusable")
+
+
+def contract_text(m):
+    mod = m["name"]
+    g = guard(mod + "_contract")
+    lines = ["/*!", f"** @file    {mod}_contract.h",
+             f"** @brief   {mod} 自包含横切契约：本模块用到的信号/事件 ID、Cfg 默认、返回码扩展集中于此，",
+             "**          整个模块文件夹可整体移植。只依赖稳定横切（IF_Types 返回码、Bus 注册 API），",
+             "**          不直接引用其它项目专属的全局 ID。",
+             "*/", f"#ifndef {g}", f"#define {g}", "", '#include "IF_Types.h"', "",
+             "/* TBD: 本模块自有的信号/事件 ID 枚举、Cfg 默认值、返回码扩展。移植时只动这里与 Impl/Cfg。 */", "",
+             f"#endif /* {g} */"]
+    return "\n".join(lines) + "\n"
+
+
+def port_md_text(m, today):
+    mod = m["name"]
+    impls = ", ".join(m.get("implements", [])) or "（待补充需求 ID）"
+    return f"""# {mod} 移植清单（参考说明，自动生成）
+
+## 1. 模块身份
+- 层：{m['layer']}　复用类型：reusable　对应 SRS 需求 ID（旧项目）：{impls}
+
+## 2. 依赖
+- 自带：{mod}_contract.h、{mod}.h/.c、本模块单测
+- 需新项目提供：稳定 IF_Types 返回码、Bus 注册 API（若用）
+
+## 3. 需重新适配的接驳点（移植时逐条改）
+- [ ] Impl/ → 绑定新项目 MCAL/SDK（仅 HAL 模块）
+- [ ] {mod}_Cfg.h → 新项目板级/通道/参数
+- [ ] 信号/事件 ID → 在新项目登记 {mod}_contract.h 里的 ID
+- [ ] 文件名/符号前缀 → 若新项目 file_prefix 不同则改
+
+## 4. 追溯重映射
+- 旧 SRS ID（{impls}）→ 新项目 SRS ID：TBD（移植时回填）
+
+## 5. 主机单测
+- 如何脱离硬件跑本模块单测（打桩点说明）：TBD
+"""
+
+
 def header_text(m, today):
     mod = m["name"]
     g = guard(mod)
@@ -163,6 +210,9 @@ def main():
             os.path.join(out, hdr_dir, f"{mod}_Cfg.h"): cfg_text(m, today),
             os.path.join(out, c_dir, f"{mod}.c"): c_text(m, today),
         }
+        if reuse_of(m) == "reusable":
+            files[os.path.join(out, hdr_dir, f"{mod}_contract.h")] = contract_text(m)
+            files[os.path.join(out, hdr_dir, f"{mod}_port.md")] = port_md_text(m, today)
         planned.append((mod, files))
 
     for mod, files in planned:
