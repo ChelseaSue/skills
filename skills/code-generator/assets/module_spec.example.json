@@ -32,7 +32,7 @@
     },
     {
       "name": "NativeDeviceService",
-      "display": "Native / Device Service\n硬件能力门面",
+      "display": "Native / 硬件快速访问",
       "layer": "Service",
       "brief": "向 App 暴露低开销设备能力，并完成校验、仲裁和受控 HAL 调用",
       "highlight": true,
@@ -175,6 +175,38 @@
       "brief": "总线外挂存储器驱动",
       "implements": [],
       "deps": ["Mcal_Spi.h"]
+    },
+    {
+      "name": "CanIf",
+      "display": "CanIf / Com / PduR",
+      "layer": "Bsw",
+      "brief": "AUTOSAR 通信协议栈",
+      "implements": [],
+      "deps": ["Mcal_Can.h"]
+    },
+    {
+      "name": "Dcm",
+      "display": "Dcm / Dem / Det",
+      "layer": "Bsw",
+      "brief": "诊断与事件管理栈",
+      "implements": [],
+      "deps": ["Mcal_Can.h"]
+    },
+    {
+      "name": "NvM",
+      "display": "NvM / MemIf / Fee",
+      "layer": "Bsw",
+      "brief": "存储抽象与非易失管理栈",
+      "implements": [],
+      "deps": ["Mcal_Spi.h"]
+    },
+    {
+      "name": "CanSM",
+      "display": "CanSM / ComM",
+      "layer": "Bsw",
+      "brief": "通信模式与网络管理",
+      "implements": [],
+      "deps": ["Mcal_Can.h"]
     },
     {
       "name": "DioAdc",

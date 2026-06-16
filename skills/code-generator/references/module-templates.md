@@ -80,7 +80,7 @@ IF_Status_t <Module>_DoSomething(uint16_t arg);
 ** @brief   <Module> 实现。所属层：<层名>。
 */
 #include "<Module>.h"
-/* 仅 #include 相邻下层或 architecture_edges 接口（如 Service→HAL、HAL→MCAL/CDD）、横切层。 */
+/* 仅 #include 相邻下层或 architecture_edges 接口（如 Service→HAL、HAL→MCAL/CDD/BSW）、横切层。 */
 #include "IF_Gpio.h"          /* 例：本模块经 HAL GPIO 接口操作硬件——不直够 MCAL */
 #include "SignalBus.h"        /* 例：同层解耦——读写信号而非互调他模块 */
 
@@ -119,9 +119,11 @@ IF_Status_t <Module>_DoSomething(uint16_t arg)
 - **脚手架模式**：函数体留 `/* TBD: ... */`，但**头文件契约要尽量完整**（从 SAD 组件 API 表抄）——契约是后续
   逐模块实现的合同。
 - **逐模块模式**：把 `TBD` 换成真实逻辑；状态机/时序严格对齐 SAD；同层协作只经总线/公开接口；硬件只经相邻下层
-  或 `architecture_edges` 接口。默认片内外设 `HAL→MCAL`，外挂芯片 `HAL→CDD→MCAL`。
-- **HAL 接口模块**额外遵循 `layering-rules.md` 的 If/Impl 拆分：`If/IF_*.h` 放契约，`Impl/IF_*.c` 调 MCAL/CDD 落地，
+  或 `architecture_edges` 接口。默认片内外设 `HAL→MCAL`，外挂芯片 `HAL→CDD→MCAL`，AUTOSAR 基础软件 `HAL→BSW→MCAL`。
+- **HAL 接口模块**额外遵循 `layering-rules.md` 的 If/Impl 拆分：`If/IF_*.h` 放契约，`Impl/IF_*.c` 调 MCAL/CDD/BSW 落地，
   便于换实现/打桩注入。
+- **驱动栈平级约束**：CDD 与 BSW 位于同一 `peer_groups`，默认互不 include；CDD 做外挂芯片专用驱动，BSW 做 AUTOSAR
+  通信/诊断/存储/模式栈，二者各自依赖 MCAL 总线/存储接口。
 - **基础平台约束**：MCAL 与 OS/RTOS 位于同一 `peer_groups`，默认互不 include；OS 原语由 Service/OSIF 使用，
   MCAL 专注寄存器级外设驱动。
 - **公共数据结构进头文件**：模块对上层暴露的 `typedef`/`enum`/`struct` 写在 `.h`（契约的一部分）；模块**私有**的

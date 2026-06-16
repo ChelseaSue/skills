@@ -59,11 +59,13 @@ description: >
   再受控调用 HAL；MCU 单进程项目默认使用普通 C 函数调用，不强制 IPC。
 - **OS 路径**：只有 Service 内的 `OSIF → OS/RTOS`。OSIF 封装任务、同步、队列和时基；Native/Device Service 不借此
   绕到 OS，架构图也不得把该依赖画成整个 Service 层指向 OS。
-- **硬件路径**：片内外设走 `HAL → MCAL`；外挂芯片走 `HAL → CDD → MCAL`。CDD 是可选分支，不是所有 HAL 调用的必经层。
+- **硬件路径**：片内外设走 `HAL → MCAL`；外挂芯片走 `HAL → CDD → MCAL`；AUTOSAR 基础软件走 `HAL → BSW → MCAL`。
+  CDD 与 BSW 是**同层并列的两条可选驱动栈**（同一 `peer_groups`、互不依赖），都不是所有 HAL 调用的必经层。
 - **基础平台**：MCAL 与 OS/RTOS 处于同一平级基础平台，二者共同直接运行于 MCU 内核/片上与板级硬件，
   默认 `MCAL ↛ OS`、`OS ↛ MCAL`。
 - **职责归属**：实时算法核（PID/FOC/滤波/状态估计）放 Service；硬件无关接口放 HAL；外挂芯片协议放 CDD；
-  寄存器级片上外设驱动放 MCAL；调度与同步原语放 OS/RTOS。Types、Bus、Cfg 作为横切能力，保持零业务逻辑和零硬件依赖。
+  AUTOSAR 通信/诊断/存储/模式栈放 BSW；寄存器级片上外设驱动放 MCAL；调度与同步原语放 OS/RTOS。
+  Types、Bus、Cfg 作为横切能力，保持零业务逻辑和零硬件依赖。
 - **冲突决策规则**：SAD 明确给出与上述基线不同的分层、职责归属或调用拓扑时，**不得自动采用 SAD，也不得自动忽略
   SAD**。先向用户展示差异摘要，并请用户明确二选一：`采用 SAD 指定架构` 或 `采用 skill 默认架构`。用户未决策前，
   停止生成 `layers.json`、`module_spec.json`、架构图和代码。决定采用 SAD 时，把差异写入项目 `layers.json` 的
@@ -86,7 +88,7 @@ description: >
    明确选择默认方案时采用上述默认架构基线。
    上层只能依赖**相邻下层或 `architecture_edges` 声明的结构边**，不向上依赖、不沿未声明路径跳层。
    默认控制路径是 `App → Native/Device Service → HAL`，OS 能力只经 `OSIF → OS/RTOS`；默认底层拓扑是片内外设 `HAL → MCAL`、外挂芯片
-   `HAL → CDD → MCAL`，CDD 是可选分支而非必经层；MCAL 与 OS/RTOS 默认处于同一基础平台级、共同直接建立在
+   `HAL → CDD → MCAL`、AUTOSAR 基础软件 `HAL → BSW → MCAL`，CDD 与 BSW 是同层并列的两条可选分支而非必经层；MCAL 与 OS/RTOS 默认处于同一基础平台级、共同直接建立在
    硬件之上且互不依赖；同层模块之间高内聚低耦合，靠接口/总线/回调解耦
    （上下层与同层的通信机制——SignalBus/回调/EventBus/接口——按产品场景选，见 `references/layering-rules.md` §4）；硬件相关全部收敛到抽象层
    接口（`.h`）之后，实现（`.c`）可替换、可打桩注入。规则与判定见 `references/layering-rules.md`。
@@ -127,8 +129,8 @@ python3 scripts/discover_inputs.py <项目根目录>
 
 ### 2.5 架构差异检测与用户决策门（有冲突时必须暂停）
 读取 SAD 的分层架构后，先与 `assets/default-software-layered-model.svg` 的默认基线比较，至少检查：
-层清单与层序、App 是否直连 HAL、Native/Device Service 是否存在、OS 是否仅经 OSIF 使用、CDD 是否为可选分支、
-HAL→MCAL / HAL→CDD→MCAL 路径、MCAL 与 OS/RTOS 是否平级隔离、算法与横切能力的归属。
+层清单与层序、App 是否直连 HAL、Native/Device Service 是否存在、OS 是否仅经 OSIF 使用、CDD/BSW 是否为可选分支、
+HAL→MCAL / HAL→CDD→MCAL / HAL→BSW→MCAL 路径、CDD 与 BSW 是否平级隔离、MCAL 与 OS/RTOS 是否平级隔离、算法与横切能力的归属。
 
 - **无架构差异**：记录“与默认基线一致”，继续第 3 步。
 - **SAD 未描述这些架构项**：记录“采用 skill 默认架构”，继续第 3 步。
@@ -157,9 +159,9 @@ HAL→MCAL / HAL→CDD→MCAL 路径、MCAL 与 OS/RTOS 是否平级隔离、算
   `assets/` 下有 `module_spec.example.json` / `layers.example.json` 可参照（**仅示例，按真实 SAD 改写**）。
   若第 2.5 步判定无差异、SAD 未描述架构，或用户明确选择 skill 默认架构，直接以
   `assets/layers.example.json` 和 `assets/module_spec.example.json` 为配置起点：
-  保留 `App → Native/Device Service → HAL`、`OSIF → OS/RTOS`、`HAL → MCAL`、`HAL → CDD → MCAL`；
-  用 `peer_groups:[["Mcal","Os"]]` 声明 MCAL 与 OS/RTOS 平级隔离。`["Service","Os"]` 只是静态层级检查所需的
-  合法结构边，模块依赖中只有 OSIF 可以实际使用该边。
+  保留 `App → Native/Device Service → HAL`、`OSIF → OS/RTOS`、`HAL → MCAL`、`HAL → CDD → MCAL`、`HAL → BSW → MCAL`；
+  用 `peer_groups:[["Cdd","Bsw"],["Mcal","Os"]]` 声明 CDD 与 BSW、MCAL 与 OS/RTOS 各自平级隔离。`["Service","Os"]`
+  只是静态层级检查所需的合法结构边，模块依赖中只有 OSIF 可以实际使用该边。
   若用户明确选择 SAD 指定架构，则按 SAD 生成两份配置，并附带第 2.5 步的架构决策记录；不要混入未获选择的默认拓扑。
 
 ### 3.5 出分层架构图（可视化校验，建议每次做）
@@ -181,7 +183,8 @@ python3 scripts/scaffold_tree.py --spec <module_spec.json> --layers <layers.json
 它为每个模块生成：`<Module>.h`（公开接口 + API 契约注释 + `@implements <需求ID>` 追溯标注 + 头文件保护）、
 `<Module>_Cfg.h`（编译期配置占位）、`<Module>.c`（`#include` 仅含**相邻下层/`architecture_edges` 接口 +
 同层 + 横切层**、函数桩 +
-`/* TBD: ... */` 体）。HAL 实现按设备归属选择 MCAL 或 CDD；CDD 仅用于外挂芯片并依赖 MCAL 总线接口。生成后
+`/* TBD: ... */` 体）。HAL 实现按设备归属选择 MCAL、CDD 或 BSW；CDD 用于外挂芯片、BSW 用于 AUTOSAR 基础软件栈，
+二者各自依赖 MCAL 总线/存储接口且互不依赖。生成后
 **人工/模型补全**头文件契约细节与目录 README，确保骨架可被编译器解析。
 目录布局原则与命名规范见 `references/layering-rules.md` 与 `references/module-templates.md`。
 

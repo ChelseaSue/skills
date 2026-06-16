@@ -13,16 +13,20 @@
    - 顶部**层标题条**（层名 + `（前缀 xxx_）`，前缀取自 `file_prefix`）；
    - 层内**模块卡片块**（渐变圆角块）；模块若带 `group` 字段则按组画虚线分组框（如 System/Connectivity）。
 
-2. **平级层必须并排**：`peer_groups` 中的不同层位于同一水平带，不能画成上下关系。默认
-   `["Mcal","Os"]` 应并排放入“基础软件平台”区域，底部共同连接 MCU 内核/硬件，并明确标注“平级、互不依赖”。
-   平级层仍保留各自标题和模块边界；图中不得绘制 MCAL 与 OS/RTOS 之间的依赖箭头。
+2. **平级层必须并排**：`peer_groups` 中的不同层位于同一水平带，不能画成上下关系，并明确标注“平级、互不依赖”。默认有两条平级带：
+   - `["Cdd","Bsw"]`：CDD 复杂驱动与 BSW 基础软件栈并排放入“基础平台”带（同层并列的两条可选驱动栈），运行在 MCAL
+     之上，**不画硬件底条**（`layers.json.peer_group_hardware` 该组为 `false`）。
+   - `["Mcal","Os"]`：MCAL 与 OS/RTOS 并排放入“驱动栈”带，底部**画硬件底条**共同连接 MCU 内核/硬件（该组为 `true`）。
+   平级层仍保留各自标题和模块边界；图中不得绘制 CDD↔BSW、MCAL↔OS/RTOS 之间的依赖箭头。
 
 3. **结构边必须可见**：`architecture_edges` 不能只用于代码门禁，架构图也要画出带方向的调用路径。默认模型至少显示：
    - `App → Native/Device Service → HAL`，其中 Native/Device Service 是上层快速、受控访问 HAL 的硬件能力门面；
    - `OSIF → OS/RTOS`，箭头必须从 OSIF 模块卡片发出，不得从整个 Service 层边框发出；
    - 片内外设 `HAL → MCAL`；
-   - 外挂芯片 `HAL → CDD → MCAL`。
-   `branch_layers`（默认 CDD）应缩进为可选分支，避免被误画成所有 HAL 调用的串行必经层。
+   - 外挂芯片 `HAL → CDD → MCAL`、AUTOSAR 基础软件 `HAL → BSW → MCAL`：CDD/BSW 在“基础平台”带里并排，可用一条
+     `HAL → 基础平台带` 与一条 `基础平台带 → 驱动栈带` 的合并箭头表达（`edge_styles` 的 `route:"frame"` 指向整条平级带，
+     同组另一条边用 `route:"none"` 不重复画），避免对 CDD、BSW 各画一条造成杂乱。
+   CDD/BSW 是可选分支，避免被误画成所有 HAL 调用的串行必经层。
 
 4. **横切层必须画成竖条，不占层序**：`layers.json` 的 `cross_cutting`（如 `Bus`/`Types`/`Cfg`）一律画成
    **右侧竖条**，竖向**只跨它的使用者层**，并用虚线箭头连到这些层。**严禁**把横切层塞成一个横向的普通层——

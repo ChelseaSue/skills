@@ -17,31 +17,36 @@
 | — | **Bus 横切层**（可选） | 同层模块间解耦的数据/事件通道 | 信号总线（状态数据池）、事件总线（发布/订阅） |
 | 2 | **Service 服务层** | 与硬件无关的通用服务、硬件能力门面、资源仲裁与实时算法 | **Native/Device Service**（对 App 暴露设备能力并受控调用 HAL）、诊断、参数/NVM、协议栈适配、OSIF、**控制/信号处理算法核**（FOC、PID、滤波、状态估计等） |
 | 3 | **HAL 硬件抽象层** | 把"做什么"与"用哪块硬件做"解耦；按设备类型选择直连 MCAL 或经 CDD 访问 | 每类外设一个抽象接口（GPIO/ADC/PWM/CAN/定时器/看门狗…）：接口 `.h` + 实现 `.c` |
-| 4 | **CDD 复杂驱动层**（可选分支） | 总线外挂芯片的专用驱动，不是 HAL 与 MCAL 之间的必经层 | 电源管理 IC、BMS 前端、外部传感器/存储器等驱动 |
-| 5A（平级） | **MCAL 微控制器抽象层** | 片上外设寄存器级驱动，同时为 CDD 提供 SPI/I2C/CAN 等总线能力；直接运行在硬件上 | 芯片厂/AUTOSAR MCAL（Adc/Dio/Icu/Wdg/Spi/I2c/Can 等，多为 SDK 自带，不重造） |
+| 4A（平级） | **CDD 复杂驱动层**（可选分支） | 总线外挂芯片的专用驱动，不是 HAL 与 MCAL 之间的必经层 | 电源管理 IC、BMS 前端、外部传感器/存储器等驱动（前缀 `CDD_`） |
+| 4B（平级） | **BSW 基础软件栈**（可选分支） | 与 CDD 同层并列的第二条驱动栈：AUTOSAR 通信/诊断/存储/模式基础软件，经 MCAL 的总线/存储驱动落到硬件 | CanIf/Com/PduR、Dcm/Dem/Det、NvM/MemIf/Fee、CanSM/ComM 等（多为 AUTOSAR 原名，无统一前缀） |
+| 5A（平级） | **MCAL 微控制器抽象层** | 片上外设寄存器级驱动，同时为 CDD/BSW 提供 SPI/I2C/CAN 等总线能力；直接运行在硬件上 | 芯片厂/AUTOSAR MCAL（Adc/Dio/Icu/Wdg/Spi/I2c/Can 等，多为 SDK 自带，不重造） |
 | 5B（平级） | **OS / RTOS** | 调度、任务、同步原语；与 MCAL 平级且直接运行在处理器内核/硬件上 | FreeRTOS/AUTOSAR OS、任务/队列/信号量、板级启动 |
 
-- **HAL/CDD/MCAL 默认采用分叉拓扑，而不是一条强制串行链：**
+- **HAL/CDD/BSW/MCAL 默认采用分叉拓扑，而不是一条强制串行链。CDD 与 BSW 是同层并列的两条可选驱动栈：**
 
   ```text
-          ┌────────────┐
-          │    HAL     │
-          └─┬────────┬─┘
-     片内    │        │   外挂芯片
-            │     ┌──▼───┐
-            │     │ CDD  │
-            │     └──┬───┘
-          ┌─▼────────▼─┐
-          │    MCAL    │   (Adc/Dio/Icu/Wdg + Spi/I2c/Can)
-          └────────────┘
+          ┌──────────────────────┐
+          │         HAL          │
+          └─┬──────────┬──────┬──┘
+     片内    │  外挂芯片 │      │  通信/诊断/存储/模式
+            │     ┌────▼─┐  ┌─▼────┐
+            │     │ CDD  │  │ BSW  │   （平级 · 互不依赖）
+            │     └────┬─┘  └─┬────┘
+          ┌─▼──────────▼──────▼──┐
+          │         MCAL         │   (Adc/Dio/Icu/Wdg + Spi/I2c/Can)
+          └──────────────────────┘
   ```
 
   - **片内外设路径：`HAL → MCAL`。** 例如 HAL 的 ADC/GPIO/PWM/Timer/Watchdog 实现直接调用相应 MCAL。
   - **外挂芯片路径：`HAL → CDD → MCAL`。** HAL 暴露设备能力；CDD 实现 PMIC/BMS AFE/外部传感器等芯片协议；
     CDD 再调用 MCAL 的 SPI/I2C/CAN 等总线驱动。
-  - CDD 是**可选分支**，不是所有 HAL 调用的必经层。HAL 不得绕过 MCAL 直接操作寄存器，CDD 也不得直接操作寄存器。
+  - **基础软件路径：`HAL → BSW → MCAL`。** BSW 实现 AUTOSAR 通信/诊断/存储/模式基础软件（CanIf/Com/PduR、
+    Dcm/Dem/Det、NvM/MemIf/Fee、CanSM/ComM 等），再调用 MCAL 的 Can/Spi/Fls 等总线/存储驱动落到硬件。
+  - CDD 与 BSW 都是**可选分支**，并且**彼此平级、互不依赖**（声明在同一 `peer_groups`）。HAL 不得绕过 MCAL
+    直接操作寄存器，CDD/BSW 也不得直接操作寄存器。
   - 在 `layers.json` 中用 `architecture_edges` 声明 SAD 的合法结构边。采用本默认模型时至少声明
-    `["Hal","Mcal"]`、`["Hal","Cdd"]`、`["Cdd","Mcal"]`；这类结构边不是架构偏离，不放进 `allow_edges`。
+    `["Hal","Mcal"]`、`["Hal","Cdd"]`、`["Hal","Bsw"]`、`["Cdd","Mcal"]`、`["Bsw","Mcal"]`，并用
+    `peer_groups` 声明 `["Cdd","Bsw"]`；这类结构边不是架构偏离，不放进 `allow_edges`。
 - **MCAL 与 OS/RTOS 属于同一个基础软件平台级，但彼此是独立层：**
 
   ```text
@@ -97,8 +102,8 @@
    *为什么*：一旦下层反向依赖上层，换硬件/换业务/单独测一层都得拖着整棵树，分层就名存实亡。
 
 2. **沿架构边向下，不准任意跳层。** 上层只依赖**相邻的下一层或 `architecture_edges` 明确声明的结构边**
-   （+ 同层 + 横切层），不得沿 SAD 未定义的路径直够更底层。CDD 是可选分支，因此 `HAL → MCAL` 虽跨过图中的 CDD
-   行，仍是默认合法结构边；它不属于架构偏离。
+   （+ 同层 + 横切层），不得沿 SAD 未定义的路径直够更底层。CDD/BSW 都是可选分支，因此 `HAL → MCAL` 虽跨过图中的
+   CDD/BSW 行，仍是默认合法结构边；它不属于架构偏离。
    App 要使用硬件能力，应调用 Service 的 Native/Device Service 公开接口，由 Service 再调用 HAL；App 不直接
    `#include` HAL、CDD 或 MCAL 头文件。需要更底层能力时，让相邻下层**封装一个接口**暴露上来。
    *为什么*：跳层会把"中间层换实现就能移植/打桩"的能力打穿——App 里散落的 MCAL 直调，会让换芯片变成全工程
@@ -134,7 +139,8 @@ HAL/
 
 - HAL 的直接上层（典型为 Service）**只 `#include` `If/` 下的接口头**，永远看不到 `Impl/` 与具体芯片；存在独立
   Service 层时，App 只包含 Service 的公开头文件，不包含 HAL 头文件。
-- HAL 的 `Impl/` 按目标设备选择依赖：片内外设实现调用 MCAL；外挂芯片实现调用 CDD。CDD 再调用 MCAL 的总线接口。
+- HAL 的 `Impl/` 按目标设备选择依赖：片内外设实现调用 MCAL；外挂芯片实现调用 CDD；走 AUTOSAR 基础软件的实现调用 BSW。
+  CDD/BSW 再各自调用 MCAL 的总线/存储接口。CDD 与 BSW 平级、互不 `#include`。
 - **换硬件** = 换一份 `Impl/`，接口头不动，上层零改动 → 可移植。
 - **测试** = 链接一份打桩的 `Impl/`（或编译期/链接期替换），即可在主机上单测上层逻辑而无需真实硬件 → 可测试。
 - 接口头里用契约注释钉死语义（示例）：
@@ -265,6 +271,7 @@ Hal 与 App 之间**没有任何编译依赖**；信息上行了，依赖没上�
 - 各层典型：
   - **HAL**：`If/` 接口头是 reusable（硬件无关）；`Impl/` 与 `*_Cfg.h` 是 project-specific（板级/SDK 绑定）。
   - **Service**：算法核（FOC/PID/滤波）、通用协议栈、诊断/参数框架 → reusable；绑定本项目业务语义的 Native/Device Service → project-specific。
+  - **CDD / BSW（两条驱动栈）**：芯片协议驱动核（CDD）、AUTOSAR 协议栈核（BSW 的 CanIf/Com/Dcm/NvM 等）→ reusable；各自的板级/网络配置（`*_Cfg.h`、AUTOSAR `*_PBcfg`/`.arxml` 生成产物）→ project-specific，与 HAL 的 `Impl/` 同理。
   - **App**：顶层编排/主状态机/任务调度强制 project-specific（它就是把 reusable 部件组装成本项目的地方）；可复用的业务子功能（通用故障管理、参数管理、按键/LED 行为库等）单独切模块后可标 reusable。
 
 ### 8.2 reusable 模块四条护栏

@@ -126,6 +126,7 @@ def main():
     cross = layers_cfg.get("cross_cutting", [])
     peer_groups = layers_cfg.get("peer_groups", [])
     peer_group_labels = layers_cfg.get("peer_group_labels", {})
+    peer_group_hardware = layers_cfg.get("peer_group_hardware", {})
     branch_layers = set(layers_cfg.get("branch_layers", []))
     architecture_edges = [tuple(edge) for edge in layers_cfg.get("architecture_edges", [])]
     edge_styles = layers_cfg.get("edge_styles", {})
@@ -195,6 +196,8 @@ def main():
     bounds = {}
     boxes = {}
     module_boxes = {}
+    frame_boxes = {}      # peer_group key -> 外框 box（整条平级带）
+    member_frame = {}     # 层 -> 它所属 peer_group key
     y = 52
 
     def blocks(layer, bx, by, bw, items, cols, base, h=44):
@@ -301,6 +304,8 @@ def main():
     def draw_peer_row(group, idx):
         nonlocal y
         y0 = y
+        group_key = "|".join(group)
+        on_hardware = peer_group_hardware.get(group_key, True)
         count = len(group)
         inner_gap = 12
         inner_x0 = PANEL_X + PAD
@@ -308,16 +313,16 @@ def main():
         module_rows = []
         for L in group:
             items = by_layer.get(L, []) or [{"name": "TBD", "display": "（待补充模块）"}]
-            cols = min(len(items), 3) or 1
+            cols = 2 if len(items) == 4 else (min(len(items), 3) or 1)
             rows = (len(items) + cols - 1) // cols
             module_rows.append((items, cols, rows))
         body_h = max(rows * 44 + (rows - 1) * BLK_GAP for _, _, rows in module_rows)
         resp_h = 66
         hardware_h = 34
-        total = PAD + TITLE_H + 8 + resp_h + 8 + body_h + 12 + 24 + hardware_h + PAD
+        hw_block = (24 + hardware_h) if on_hardware else 0
+        total = PAD + TITLE_H + 8 + resp_h + 8 + body_h + 12 + 24 + hw_block + PAD
 
         s.rect(PANEL_X, y0, PANEL_W, total, 12, "#fafafa", stroke="#58636f", sw=2)
-        group_key = "|".join(group)
         group_label = peer_group_labels.get(group_key, "基础软件平台")
         s.rect(8, y0, 40, total, 8, s.grad("#58636f"), stroke="#7a7a7a", sw=1)
         chars = list(group_label); ch_gap = min(22, (total - 16) / max(len(chars), 1))
@@ -341,16 +346,20 @@ def main():
 
         note_y = y0 + PAD + TITLE_H + 8 + resp_h + 8 + body_h + 12
         s.text(PANEL_X + PANEL_W / 2, note_y + 10, "平级 · 互不依赖", size=12, fill="#58636f", weight="bold")
-        hw_y = note_y + 24
-        s.rect(PANEL_X + PAD, hw_y, PANEL_W - 2 * PAD, hardware_h, 7,
-               s.grad("#9aa3aa"), stroke="#58636f", sw=1)
-        for gi, L in enumerate(group):
-            ix = inner_x0 + gi * (inner_w + inner_gap)
-            arrow_x = ix + inner_w / 2
-            s.polyline([(arrow_x, note_y - 4), (arrow_x, hw_y)],
-                       "#1976D2", marker="arrBlue", sw=1.8)
-        s.text(PANEL_X + PANEL_W / 2, hw_y + hardware_h / 2,
-               "共同直接运行于硬件 / MCU 内核与片上外设", size=12, fill="#ffffff", weight="bold")
+        if on_hardware:
+            hw_y = note_y + 24
+            s.rect(PANEL_X + PAD, hw_y, PANEL_W - 2 * PAD, hardware_h, 7,
+                   s.grad("#9aa3aa"), stroke="#58636f", sw=1)
+            for gi, L in enumerate(group):
+                ix = inner_x0 + gi * (inner_w + inner_gap)
+                arrow_x = ix + inner_w / 2
+                s.polyline([(arrow_x, note_y - 4), (arrow_x, hw_y)],
+                           "#1976D2", marker="arrBlue", sw=1.8)
+            s.text(PANEL_X + PANEL_W / 2, hw_y + hardware_h / 2,
+                   "共同直接运行于硬件 / MCU 内核与片上外设", size=12, fill="#ffffff", weight="bold")
+        frame_boxes[group_key] = (PANEL_X, y0, PANEL_X + PANEL_W, y0 + total)
+        for L in group:
+            member_frame[L] = group_key
         y = y0 + total + 16
 
     consumed_peers = set()
@@ -383,6 +392,19 @@ def main():
         route = cfg.get("route", "direct")
         label = cfg.get("label", "")
 
+        if route == "none":
+            continue  # 该架构边由同组的另一条边代表，图上不重复画
+        if route == "frame":
+            # 单箭头指向整条平级带外框（合并同组多条边），居中竖直
+            src_box = frame_boxes.get(member_frame.get(src), boxes[src])
+            dst_box = frame_boxes.get(member_frame.get(dst), boxes[dst])
+            cx = PANEL_X + PANEL_W / 2
+            s.polyline([(cx, src_box[3]), (cx, dst_box[1])], color, marker=marker, sw=2.6)
+            if label:
+                s.text(cx - 10, src_box[3] + 14, label, size=11, fill=color,
+                       anchor="end", weight="bold")
+            continue
+
         if route == "module_direct":
             start_x = sx0 + (sx1 - sx0) / 2
             target_x = tx0 + (tx1 - tx0) / 2
@@ -392,6 +414,15 @@ def main():
             if label:
                 s.text(start_x + 8, sy1 + 8, label,
                        size=10.5, fill=color, weight="bold")
+        elif route == "panel_down":
+            # 从源模块所在列、源层面板底边竖直向下指向目标层（不绕右侧、不穿同层卡片）
+            msx0, _, msx1, _ = module_boxes.get((src, cfg.get("source_module")), boxes[src])
+            start_x = (msx0 + msx1) / 2
+            src_bottom = boxes[src][3]
+            s.polyline([(start_x, src_bottom), (start_x, ty0)], color, marker=marker, sw=2.4)
+            if label:
+                s.text(start_x + 8, src_bottom + 14, label, size=10.5, fill=color,
+                       anchor="start", weight="bold")
         elif route == "side_direct":
             route_x = MAIN_RIGHT + 18
             start_y = sy0 + (sy1 - sy0) / 2
@@ -402,10 +433,10 @@ def main():
                 s.text(route_x - 6, (start_y + target_y) / 2, label,
                        size=10.5, fill=color, anchor="end", weight="bold")
         elif route == "right":
-            route_x = MAIN_RIGHT + EDGE_GUTTER - 20
+            route_x = MAIN_RIGHT + EDGE_GUTTER - 20 - float(cfg.get("gutter_offset", 0))
             start_x = sx0 + (sx1 - sx0) * float(cfg.get("start_ratio", 0.75))
             start_y = sy1
-            target_y = ty0 + TITLE_H / 2 + PAD
+            target_y = ty0 + TITLE_H / 2 + PAD + float(cfg.get("target_dy", 0))
             points = [(start_x, start_y), (start_x, start_y + 8), (route_x, start_y + 8),
                       (route_x, target_y),
                       (tx1, target_y)]

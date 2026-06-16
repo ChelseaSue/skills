@@ -12,13 +12,13 @@
 - [M] 架构决策记录至少包含 `architecture_source`、用户确认、日期、差异范围；全部生成产物与所选架构一致。
 - [A] 不存在**向上 include**：任何模块都不 `#include` 更高层头。（`check_layering.py` 0 违规）
 - [A] 不存在**未声明的跳层 include**：上层只够相邻下层、`architecture_edges`、同层和横切层
-  （`strict_adjacent=true` 时）；默认允许片内 `HAL→MCAL` 与外挂芯片 `HAL→CDD→MCAL`。
-- [A] 采用 skill 默认架构时，App 不直接依赖 HAL/CDD/MCAL；硬件访问经
+  （`strict_adjacent=true` 时）；默认允许片内 `HAL→MCAL`、外挂芯片 `HAL→CDD→MCAL` 与基础软件 `HAL→BSW→MCAL`。
+- [A] 采用 skill 默认架构时，App 不直接依赖 HAL/CDD/BSW/MCAL；硬件访问经
   `App→Native/Device Service→HAL`。
 - [A] `Service→Os` 的实际模块依赖仅来自 OSIF；Native/Device Service 和其它 Service 模块不得直接 include
   OS/RTOS 头文件，除非 SAD 明确批准并记录。
-- [A] `peer_groups` 中不同层之间不存在未声明依赖；默认 `MCAL→OS` 与 `OS→MCAL` 均为 0。
-- [M] 硬件相关代码全部收敛在抽象层（HAL/CDD）接口之后；上层无寄存器直操作、无芯片头直 include。
+- [A] `peer_groups` 中不同层之间不存在未声明依赖；默认 `CDD↔BSW`、`MCAL↔OS` 互相 include 均为 0。
+- [M] 硬件相关代码全部收敛在抽象层（HAL/CDD/BSW）接口之后；上层无寄存器直操作、无芯片头直 include。
 - [M] `layers.json` 的层序、平级组、横切层、`architecture_edges`、放行边与 SAD 分层架构图一致；MCAL 与 OS/RTOS
   在图中平级并共同连接硬件，结构边与架构偏离未混用。
 

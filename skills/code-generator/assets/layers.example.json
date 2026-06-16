@@ -1,13 +1,19 @@
 {
   "_comment": "默认通用嵌入式分层：App→Service→HAL；片内 HAL→MCAL，外挂 HAL→CDD→MCAL；MCAL 与 OS/RTOS 平级、共同直接位于硬件之上且互不依赖。真实 SAD 有明确差异时按 SAD 改写。",
-  "layers": ["App", "Service", "Hal", "Cdd", "Mcal", "Os"],
+  "layers": ["App", "Service", "Hal", "Cdd", "Bsw", "Mcal", "Os"],
   "peer_groups": [
+    ["Cdd", "Bsw"],
     ["Mcal", "Os"]
   ],
   "peer_group_labels": {
-    "Mcal|Os": "基础平台"
+    "Cdd|Bsw": "基础平台",
+    "Mcal|Os": "驱动栈"
   },
-  "branch_layers": ["Cdd"],
+  "peer_group_hardware": {
+    "Cdd|Bsw": false,
+    "Mcal|Os": true
+  },
+  "branch_layers": [],
   "cross_cutting": ["Bus", "Types", "Cfg"],
   "layer_info": {
     "App": {
@@ -24,6 +30,10 @@
     },
     "Cdd": {
       "responsibility": ["总线外挂芯片", "芯片协议与专用驱动"],
+      "content_label": "典型内容 / TYPICAL CONTENT"
+    },
+    "Bsw": {
+      "responsibility": ["AUTOSAR 基础软件", "通信/诊断/存储/模式栈"],
       "content_label": "典型内容 / TYPICAL CONTENT"
     },
     "Mcal": {
@@ -45,6 +55,7 @@
     "Source/Service": "Service",
     "Source/Hal": "Hal",
     "Source/Cdd": "Cdd",
+    "Source/Bsw": "Bsw",
     "Source/Mcal": "Mcal",
     "Source/Os": "Os",
     "Source/Bus": "Bus",
@@ -78,17 +89,19 @@
     "Service": "Svc_",
     "Hal": "IF_",
     "Cdd": "Cdd_",
+    "Bsw": "",
     "Mcal": "Mcal_",
     "Os": "Os_"
   },
   "labels": {
     "App": "应用层", "Service": "服务层", "Hal": "硬件抽象层",
-    "Cdd": "复杂驱动", "Mcal": "微控制器层", "Os": "操作系统", "Bus": "横切总线"
+    "Cdd": "复杂驱动", "Bsw": "基础软件", "Mcal": "微控制器层", "Os": "操作系统", "Bus": "横切总线"
   },
   "colors": {
     "App":  {"fill": "#9FC5E8", "accent": "#1976D2"},
     "Hal":  {"fill": "#F6B26B", "accent": "#EF6C00"},
     "Cdd":  {"fill": "#93C47D", "accent": "#2E7D32"},
+    "Bsw":  {"fill": "#76A5AF", "accent": "#134F5C"},
     "Mcal": {"fill": "#A8D08D", "accent": "#1B5E20"},
     "Service": {"fill": "#D7D86E", "accent": "#827717"},
     "Os":   {"fill": "#FFD966", "accent": "#E65100"}
@@ -100,7 +113,9 @@
     ["Service", "Os"],
     ["Hal", "Mcal"],
     ["Hal", "Cdd"],
-    ["Cdd", "Mcal"]
+    ["Hal", "Bsw"],
+    ["Cdd", "Mcal"],
+    ["Bsw", "Mcal"]
   ],
   "edge_styles": {
     "App>Service": {
@@ -111,9 +126,9 @@
       "target_ratio": 0.32
     },
     "Service>Hal": {
-      "label": "Native 快速受控访问",
+      "label": "Native 快速访问",
       "color": "#00897B",
-      "route": "side_direct",
+      "route": "panel_down",
       "source_module": "NativeDeviceService"
     },
     "Service>Os": {
@@ -123,21 +138,28 @@
       "source_module": "OsIf"
     },
     "Hal>Mcal": {
-      "label": "片内外设直达路径\nHAL → MCAL",
+      "label": "片内直达\nHAL → MCAL",
       "color": "#1976D2",
-      "route": "direct",
-      "start_ratio": 0.22,
-      "target_ratio": 0.48
+      "route": "right",
+      "gutter_offset": 46,
+      "target_dy": 26,
+      "start_ratio": 0.84
     },
     "Hal>Cdd": {
-      "label": "外挂芯片路径\nHAL → CDD → MCAL",
+      "label": "外挂芯片 HAL → 基础平台",
       "color": "#1976D2",
-      "route": "branch",
-      "start_ratio": 0.72
+      "route": "frame"
+    },
+    "Hal>Bsw": {
+      "route": "none"
     },
     "Cdd>Mcal": {
+      "label": "基础平台 → 驱动栈",
       "color": "#1976D2",
-      "route": "merge_left"
+      "route": "frame"
+    },
+    "Bsw>Mcal": {
+      "route": "none"
     }
   },
   "allow_edges": [],
