@@ -18,3 +18,4 @@
 - Added the decision gate, difference-table prompt, blocking behavior, decision record fields, and conformance checks.
 - Removed remaining wording that could imply automatic SAD precedence.
 - Removed the unreferenced `layered-architecture-styled.svg/.png` pair; `default-software-layered-model.svg/.png` is now the sole canonical architecture asset.
+- Clarified that clearly misplaced modules in an original SDK may be moved to the correct architectural layer, with migration records and compatibility safeguards.

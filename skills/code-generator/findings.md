@@ -8,3 +8,4 @@
 - The accepted SVG needs to be referenced by the main SKILL.md as an authoritative fallback baseline; otherwise future runs may treat it as a decorative example.
 - A SAD/default mismatch must be a blocking user decision, not an automatic precedence rule in either direction.
 - `layered-architecture-styled.png` duplicated the default PNG byte-for-byte, while its same-named SVG was stale; the styled pair had no references and was removed.
+- “只增不删” should protect existing SDK content and interfaces, while still allowing architecture-corrective moves for modules that are physically placed in the wrong layer.
