@@ -10,6 +10,11 @@ memory map, NVM data dictionary, interrupt/task partitioning, watchdog strategy,
 contracts, deployment view — are design DECISIONS that usually live in no file yet; those are not
 detectable by a directory scan, so they're surfaced by references/input-checklist.md, not here.
 
+A `code_root` hit matters more than the other optional categories: it means the project already has
+code, so the SAD must be reconciled against it (workflow step 4.5) rather than derived from the SRS
+alone. A SAD written without that reconciliation is wrong the day it ships, and wrong invisibly —
+every chapter present, traceability 100%, and none of it matching the codebase.
+
 This only locates and buckets files (it does NOT read contents). Output is human-readable plus a JSON
 block (after the marker line) so the caller can parse it if useful.
 
@@ -32,6 +37,10 @@ CATEGORIES = [
     ("comm_matrix",  (["通信矩阵", "通讯矩阵"], ["通信矩阵", "通讯矩阵", "can_matrix", "canmatrix", "matrix", "dbc", "ldf"])),
     ("system_req",   (["系统需求"], ["系统需求", "system requirement"])),
     ("product_req",  (["产品需求"], ["产品需求", "product requirement"])),
+    # Identified by build/entry markers only — a directory merely NAMED "code" proves nothing, while a
+    # main.c or a project file pins down where the source tree actually starts.
+    ("code_root",    ([], ["main.c", "main.cpp", "cmakelists.txt", "makefile",
+                           ".ewp", ".uvprojx", ".ioc", "platformio.ini"])),
     ("hsi",          (["hsi", "HSI"], ["hsi", "端口定义", "管脚", "pin", "接口定义"])),
     ("peripheral",   (["外设"], ["外设", "负载", "硬件需求规格", "peripheral", "load"])),
     ("hw_arch",      (["硬件架构"], ["框图", "架构", "block"])),
@@ -41,7 +50,10 @@ CATEGORIES = [
 
 # what the SAD workflow expects from files on disk, and what absence means.
 EXPECTED = {
-    "srs":          ("软件需求规范 SRS（主输入）", "必需：SAD 的主输入，逐条 HOD_SRS_* 需求由此派生架构并追溯"),
+    "srs":          ("软件需求规范 SRS（主输入）", "必需：SAD 的主输入，逐条软件需求由此派生架构并追溯"),
+    "code_root":    ("已有代码根（棕地项目）",
+                     "找到即说明这是棕地项目：第 4.5 步架构对账必做，否则文档从第一版起就与代码漂移；"
+                     "找不到则按绿地项目从 SRS 正向推导"),
     "sad_template": ("软件架构模板 AU-QR-R&D-032", "必需：最终 docx 的格式基底（.doc 会自动转 .docx）"),
     "comm_matrix":  ("通信矩阵 (CAN/LIN)", "强烈建议：时序图标注真实信号名/报文ID/收发方向（第 9 章）"),
     "system_req":   ("系统需求文档", "可选：追溯链上游参考、术语/参考文献核对"),
@@ -63,6 +75,17 @@ def classify(path):
 
 DOC_EXTS = {".docx", ".doc", ".xlsx", ".xls", ".pdf", ".vsdx", ".md"}
 
+# Code-root markers are not documents, so they would never survive the DOC_EXTS filter. They get an
+# explicit bypass: their whole job is to answer "does this project already have code?", which decides
+# whether the architecture must be reconciled against it.
+CODE_MARKERS = {"main.c", "main.cpp", "cmakelists.txt", "makefile", "platformio.ini"}
+CODE_MARKER_EXTS = {".ewp", ".uvprojx", ".ioc"}
+
+
+def is_code_marker(fname):
+    f = fname.lower()
+    return f in CODE_MARKERS or os.path.splitext(f)[1] in CODE_MARKER_EXTS
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -80,7 +103,9 @@ def main():
         if any(seg.startswith(".") for seg in dirpath.split(os.sep)):
             continue
         for f in files:
-            if f.startswith("~$") or os.path.splitext(f)[1].lower() not in DOC_EXTS:
+            if f.startswith("~$"):
+                continue
+            if os.path.splitext(f)[1].lower() not in DOC_EXTS and not is_code_marker(f):
                 continue
             full = os.path.join(dirpath, f)
             cat = classify(full)
