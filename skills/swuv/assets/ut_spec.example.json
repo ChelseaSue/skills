@@ -1,0 +1,65 @@
+{
+  "_comment": "Per-project SWE.4 configuration. Every project-specific value lives here, never in the scripts. Copy, then edit for your project - do not reuse the OXY names below.",
+  "project": "OXY",
+  "component": "SWC_O2",
+  "swdd": "swdd/SWC_O2/OXY_SWC_O2_Software_Detailed_Design_Document_EN.md",
+  "source_dirs": [
+    "code/Source/APP/SWC/SWC_O2"
+  ],
+  "output_dir": "unit_test/SWC_O2",
+  "_comment_asil": "Drives the structural coverage targets below. Set the highest ASIL of the units under test; QM keeps MC/DC disabled.",
+  "asil": "QM",
+  "coverage_targets": {
+    "statement": 1.0,
+    "branch": 1.0,
+    "mcdc": null
+  },
+  "_comment_ids": "Case ids are SUT-<n>, design-unit ids are taken from the SWDD when present and otherwise generated as SWDD-<n>. digits pads the number; start is the first number issued.",
+  "id_prefix": {
+    "case": "SUT-",
+    "unit": "SWDD-",
+    "digits": 5,
+    "start": 1
+  },
+  "_comment_methods": "Allowed values for the test-method and design-method columns of the case template. The first entry of each list is the default.",
+  "test_methods": [
+    "功能测试",
+    "性能测试",
+    "故障注入法",
+    "接口测试",
+    "资源使用评估"
+  ],
+  "derivation_methods": [
+    "需求分析",
+    "等价类",
+    "边界值",
+    "错误推测"
+  ],
+  "design_method_text": "基于需求分析、等价类、边界值",
+  "_comment_priority": "SWDD Priority = Complexity x Importance (1..25) mapped to the H/M/L column. Boundaries are inclusive lower bounds.",
+  "priority_map": {
+    "H": 15,
+    "M": 6,
+    "L": 0
+  },
+  "_comment_fixed_text": "Boilerplate columns. Keep them aligned with the wording your reviewers expect.",
+  "precondition_default": "Ceedling 搭建测试环境",
+  "verdict_default": "执行测试该用例，实际输出值与期望值一致，覆盖分支与目标一致",
+  "_comment_static": "SWE.4-A04 static verification. cyclomatic_max mirrors the process KPI.",
+  "static": {
+    "enabled": true,
+    "tool": "cppcheck",
+    "misra": true,
+    "cyclomatic_max": 15
+  },
+  "_comment_coverage_evidence": "由 build_evidence.py 生成的证据报告，报告的证据列引用它。不要指向 Ceedling gcov 插件的默认报告：它按 :paths :source 过滤，而整 TU 测法下被测文件不在该路径上，那份报告必然是空的（0/0）。",
+  "coverage_report_path": "unit_test/<组件>/report/unit_verification_evidence.html",
+  "_comment_templates": "Company templates cloned to produce the deliverables. Paths are relative to the project root.",
+  "templates": {
+    "case": "单元测试/AU-QR-R&D-046-软件单元测试用例模板Software_Unit_Test_Case_Template_V1.0.xls",
+    "report": "单元测试/AU-QR-R&D-048-软件单元测试报告Software_Unit_Test_Report_V1.0.xlsx",
+    "trace": "单元测试/AU-QR-R&D-038-软件单元测试追溯矩阵Software Unit Test Traceability Matrix.xlsx"
+  },
+  "_comment_tools": "可选：钉住产出本次结果的工具路径，受控交付物需要记录到底是哪套工具链跑的。工具已安装但不在 PATH 上时必须填写 —— Ceedling 是 Ruby gem 的 shim，其 bin 目录常不在系统 PATH 上。键名取 gcovr / gcc / ceedling / cppcheck。",
+  "tools": {}
+}
