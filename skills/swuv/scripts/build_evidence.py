@@ -476,13 +476,25 @@ def render(ctx: dict) -> str:
 
     # 3 -----------------------------------------------------------------
     p.append('<h2>3. 用例执行清单/Testcase Management</h2>')
+    # One row per test function, because each carries its own verdict and
+    # duration - that is the evidence this section exists to provide.  Several
+    # tests may implement one case (a second input value for the same path), so
+    # the repeated unit/case cells are blanked on the continuation rows and the
+    # group reads as one block without hiding any individual result.
+    exec_rows = []
+    prev_case = None
+    for n, t in enumerate(ctx['rows_exec'], 1):
+        same = t['case_id'] != '—' and t['case_id'] == prev_case
+        exec_rows.append([n,
+                          '' if same else t['unit'],
+                          '' if same else t['case_id'],
+                          '' if same else t['case_name'],
+                          t['test'], t['branches'], t['time'],
+                          verdict(t['status'])])
+        prev_case = t['case_id']
     p.append(table(['序号/No.', '软件单元/Unit', '用例ID/Case ID', '用例名称/Case',
                     '测试函数/Test function', '覆盖分支/Branches', '耗时/Time(s)',
-                    '结果/Result'],
-                   [[n, t['unit'], t['case_id'], t['case_name'], t['test'],
-                     t['branches'], t['time'], verdict(t['status'])]
-                    for n, t in enumerate(ctx['rows_exec'], 1)],
-                   numeric={1, 7}))
+                    '结果/Result'], exec_rows, numeric={1, 7}))
 
     extra = [t for t in ctx['unmapped'] if t['branches']]
     bare = [t for t in ctx['unmapped'] if not t['branches']]
