@@ -493,8 +493,15 @@ def render(ctx: dict) -> str:
                           verdict(t['status'])])
         prev_case = t['case_id']
     p.append(table(['序号/No.', '软件单元/Unit', '用例ID/Case ID', '用例名称/Case',
-                    '测试函数/Test function', '覆盖分支/Branches', '耗时/Time(s)',
+                    '测试函数/Test function', '覆盖分支号/Branch IDs', '耗时/Time(s)',
                     '结果/Result'], exec_rows, numeric={1, 7}))
+    # "2/3" is two branch numbers, not two-thirds.  The slash is kept because it
+    # is the separator the SWDD test target and the case table already use, so
+    # the three documents read alike; the ambiguity is removed by the header and
+    # this note rather than by diverging from them.
+    p.append('<p class="meta">“覆盖分支号”列是该测试走过的详设分支编号，以 / 分隔，'
+             '<b>不是分数</b>。位数不同是路径长度不同所致：在前面的判断处提前返回的路径，'
+             '经过的判断本来就少。</p>')
 
     extra = [t for t in ctx['unmapped'] if t['branches']]
     bare = [t for t in ctx['unmapped'] if not t['branches']]

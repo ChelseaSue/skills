@@ -144,6 +144,48 @@ void test_<单元>_<序号>_<行为>(void)
   循环内判定的两侧都会走到）。
 - **supplementary** 用于用例集之外的补充测试。声明它新增了哪些分支；
   若一条分支都不新增（只是换数据再验一遍行为），写 `supplementary - 不新增分支：<理由>` 即可。
+
+### 怎么判断一个测试该标用例号还是标 supplementary（最容易搞错的一条）
+
+**判据只有一条：把这个测试实走的分支集算出来，看它是否恰好等于某条用例的分支集。**
+
+| 情况 | 标法 |
+|---|---|
+| 实走分支集 **等于** 某条用例 | 标那条用例号。**换了输入取值也仍然是那条用例** |
+| 实走分支集是某条用例的**超集** | 标那条用例号（测试驱动循环跑多个元素时会走到循环内判定的两侧） |
+| 实走的路径**用例集里没有** | `supplementary` |
+| 断言了用例期望输出之外的行为 | `supplementary` |
+
+**别把"换个取值"当成补充测试。** 等价类与边界值天然会让同一条用例有多个测试：
+
+```c
+/* SUT-00011 SCN_SanitizeGear.001 - covers branch 1: 刚超出范围 */
+void test_SCN_SanitizeGear_001_above_range_is_off(void)   { ...SCN_SanitizeGear(2u)... }
+
+/* SUT-00011 SCN_SanitizeGear.001 - covers branch 1: 同一条用例，取类型上边界 */
+void test_SCN_SanitizeGear_002_max_uint8_is_off(void)     { ...SCN_SanitizeGear(255u)... }
+```
+
+`255 > 1` 和 `2 > 1` 走的是**同一条分支 1**，所以两个测试实现的是同一条用例，
+第二个不是"用例集之外"的东西。**一条用例有多个测试是正常的**，证据报告会把它们归到一组。
+
+真正的 supplementary 长这样——它跨两个周期先走分支 1 再走分支 2，
+没有任何单条用例是这个路径：
+
+```c
+/* supplementary - 不新增分支：欠压恢复后请求自动续跑，无需重新下命令 */
+void test_SCN_ManagementPeriod_003_resumes_after_undervoltage(void)
+```
+
+判不准时不要凭感觉：用 `covers` 标上你认为的用例号跑一次
+`scripts/reconcile_cases.py`，它会告诉你实走分支与该用例是否一致。
+
+### 标记必须紧贴函数
+
+`supplementary` 与 `adds branches` **只在紧邻函数的那一个注释块内生效**。
+文件头里解释约定时写到 "supplementary" 这个词，不会波及下方第一个测试——
+工具按注释块判定，块与块之间不继承。
+（用例号是例外：一条注释可以按顺序分给随后的多个测试，见下条。）
 - 一条注释可以带多个用例：`/* O2_GearToDuty.001..005 - covers branches 1..5 */`
   会按顺序分给紧随其后的 5 个测试函数。这种写法下**分支号属于整组**，
   工具不会把它当成每个测试各自的路径。
