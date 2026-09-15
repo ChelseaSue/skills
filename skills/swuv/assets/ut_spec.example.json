@@ -7,6 +7,20 @@
     "code/Source/APP/SWC/SWC_O2"
   ],
   "output_dir": "unit_test/SWC_O2",
+  "_comment_build": "include_dirs / defines: copy them from the target build (S32DS/Eclipse: <Debug>/src/*.args, or the .cproject; Makefile: make -n). They feed both the Ceedling project.yml (scripts/gen_project_yml.py) and cppcheck. cmock_treat_as lists the project's own integer typedef names so CMock compares them as numbers.",
+  "include_dirs": [
+    "code/Source/APP/SWC/SWC_O2",
+    "code/Source/SRV",
+    "code/Source/MCAL/Platform"
+  ],
+  "defines": [
+    "S32K3XX"
+  ],
+  "cmock_treat_as": {
+    "u8": "HEX8",
+    "u16": "HEX16",
+    "u32": "UINT32"
+  },
   "_comment_asil": "Drives the structural coverage targets below. Set the highest ASIL of the units under test; QM keeps MC/DC disabled.",
   "asil": "QM",
   "coverage_targets": {
@@ -50,16 +64,24 @@
     "enabled": true,
     "tool": "cppcheck",
     "misra": true,
-    "cyclomatic_max": 15
+    "cyclomatic_max": 15,
+    "_comment_extra": "cppcheck-only additions (the Ceedling build never sees them). extra_include_dirs is searched BEFORE include_dirs - point it at the MemMap replacement headers from scripts/gen_memmap_stubs.py. extra_defines: e.g. __GNUC__ so a vendor compiler-abstraction header takes its GCC branch (gcc predefines it, so it must not go into `defines`).",
+    "extra_include_dirs": [],
+    "extra_defines": []
   },
-  "_comment_coverage_evidence": "由 build_evidence.py 生成的证据报告，报告的证据列引用它。不要指向 Ceedling gcov 插件的默认报告：它按 :paths :source 过滤，而整 TU 测法下被测文件不在该路径上，那份报告必然是空的（0/0）。",
-  "coverage_report_path": "unit_test/<组件>/report/unit_verification_evidence.html",
+  "_comment_coverage_evidence": "由 build_evidence.py 生成的单元验证报告（HTML），048 报告的证据列引用它。不要指向 Ceedling gcov 插件的默认报告：它按 :paths :source 过滤，而整 TU 测法下被测文件不在该路径上，那份报告必然是空的（0/0）。",
+  "coverage_report_path": "unit_test/<组件>/report/unit_verification_report.html",
   "_comment_templates": "Company templates cloned to produce the deliverables. Paths are relative to the project root.",
   "templates": {
     "case": "单元测试/AU-QR-R&D-046-软件单元测试用例模板Software_Unit_Test_Case_Template_V1.0.xls",
     "report": "单元测试/AU-QR-R&D-048-软件单元测试报告Software_Unit_Test_Report_V1.0.xlsx",
     "trace": "单元测试/AU-QR-R&D-038-软件单元测试追溯矩阵Software Unit Test Traceability Matrix.xlsx"
   },
+  "_comment_flags": "Optional extra flags for every test compile / link of the generated project.yml. compile_flags: e.g. --include=ut_host_regs.h to redirect fixed-address register blocks project-wide. link_flags: -Wl,--allow-multiple-definition lets a test file override an internal function of a separately linked source object (weak symbols do not resolve across objects on MinGW).",
+  "compile_flags": [],
+  "link_flags": [],
+  "_comment_host_shims": "Optional. Host-build copies for files a 64-bit host compiler rejects for target-only constructs (32-bit vector tables holding function addresses). Each `old` must occur exactly once and keep the line count; the copy is written to <output_dir>/<out> with a #line directive so coverage stays on the original file. Only replace what the target never executes either.",
+  "host_shims": [],
   "_comment_tools": "可选：钉住产出本次结果的工具路径，受控交付物需要记录到底是哪套工具链跑的。工具已安装但不在 PATH 上时必须填写 —— Ceedling 是 Ruby gem 的 shim，其 bin 目录常不在系统 PATH 上。键名取 gcovr / gcc / ceedling / cppcheck。",
   "tools": {}
 }

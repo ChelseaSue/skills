@@ -79,6 +79,15 @@ SWE.6，不属于本 skill。
 4. 准备 `ut_spec.json`（拷贝 `assets/ut_spec.example.json` 后按项目改写）。
    `asil`、`coverage_targets`、`test_methods`、`derivation_methods` 应取自项目的
    《软件单元验证策略》——该策略由人工编写，**不是本 skill 的输出**。
+5. `include_dirs` / `defines` **从目标机构建产物里抄，不要凭目录结构猜**：
+   Eclipse/S32DS 工程看 `<Debug>/src/<xx>.args`（`-I` / `-D` 逐行）或 `.cproject`，
+   Makefile 工程看 `make -n` 的实际命令行。真头文件在宿主 gcc 上基本都能编译，
+   自己"精简"一套 include 列表只会在 CMock 生成桩时缺类型。
+   `include_dirs` 会同时喂给 Ceedling 与 cppcheck，`gen_project_yml.py` 据此生成 `project.yml`：
+
+   ```bash
+   python scripts/gen_project_yml.py --spec ut_spec.json        # 已存在时需 --force
+   ```
 
 ### 第 1 步 — 解析 SWDD
 
@@ -120,7 +129,18 @@ O2_UpdateSeatDuty [2, 3, 6]: 分支 6：路径上此前已把 s_ctx.au16SeatPull
 生成结果是**草稿**：测试步骤给的是路径上的判断走向，`预期输出` 取自流程图节点。
 **必须逐条复核并补全具体取值**——等价类与边界值要从 `2.5` 的常量、枚举、标定表取真实数字，
 把 `u16GaugeKpa < OXY_O2_PRESS_START_KPA` 这类条件落实成 `399 / 400 / 401` 这样的具体输入。
-这一步是 LLM 的工作，不要交给脚本。
+这一步是 LLM 的工作，不要交给脚本。**但具体文本不要直接改 `cases.json`**——第 5 步对账
+和重跑第 2 步都会重建它。把文本写进按"单元 + 分支路径"作键的 `case_text.json`，
+每次重建后重新合并：
+
+```bash
+python scripts/apply_case_text.py --cases cases.json --text case_text.json
+```
+
+它对没拿到文本、或仍含 `待填` 的用例非零退出，草稿不会悄悄进交付物。格式见脚本 docstring。
+加 `--spec` 后还会核对**「设计方法」列只含方法名**：`基于需求分析、等价类、边界值` 这种，
+取值限于 `derivation_methods`。等价类怎么划、边界取了哪几个值写进测试步骤，不写进这一列——
+评审按这一列筛选统计，夹了说明文字就筛不动了（`self_check` 第 6 项同样按此判）。
 
 ### 第 3 步 — 静态验证（SWE.4-A04）
 
@@ -131,10 +151,55 @@ python scripts/run_static.py --spec ut_spec.json --model swdd_model.json -o stat
 cppcheck + MISRA addon；圈复杂度取自 SWDD 的判断数（McCabe CCN = 判断数 + 1），
 与详设同源，避免两处测量互相打架。
 
+除 `static.json`（机器可读，供后续脚本用）外，还会产出独立的
+`<output_dir>/report/static_verification_report.html`：结论、按规则统计、每条发现附源码行、
+逐单元 CCN、命令行。048 报告「静态验证情况总结」的结果说明列自动带上这个路径；
+cppcheck 自己不出报告文件（`--xml` 只是另一种文本格式，`cppcheck-htmlreport` 不随 MinGW 包发布），
+不要另外去找。
+
 **通过判据**：MISRA mandatory 违规为 0；required/advisory 允许存在但需要在报告中给出理由；
 圈复杂度不超过配置的阈值。MISRA 规则原文属授权内容，未配置时只报规则号，不影响判级。
+报告里静态验证一栏据此三态判定：`Pass` / `Pass with conditions`（仅 CCN 超限）/ `Fail`；
+没跑就是 `not run`。
+
+只统计 `source_dirs` 下的发现；供应商头文件里的告警计入 `findings_outside_object`，
+不参与判级——被测对象是本模块，不是 MCAL。
+
+**AutoSAR/MCAL 工程的两个 cppcheck 专属问题**（它们只影响 cppcheck，gcc 没事）：
+- `*_MemMap.h` 的 `#error "no valid memory mapping symbol"`：cppcheck 的预处理器
+  不按 gcc 的方式处理该协议，整个文件被放弃、MISRA 什么都没查。
+  用 `gen_memmap_stubs.py --search <MCAL 目录> -o <output_dir>/static_support` 生成
+  只含版本宏的替身，填进 `static.extra_include_dirs`（它排在 `include_dirs` 之前）。
+- 编译器抽象头（`Mcal.h` / `Compiler.h`）遇到不认识的编译器就 `#error`：
+  把 `__GNUC__` 放进 `static.extra_defines`。**不要放进 `defines`**，gcc 自己会预定义它。
+
+`run_static.py` 若报"分析了 0 个函数/0 条发现"，先怀疑上面两条，不要当成代码干净。
 
 ### 第 4 步 — 执行单元测试与采集覆盖率
+
+**一条用例只验证一个单元。** 被测单元调用的**模块内部函数**也要替换掉，不能让它真跑——
+否则用例的预期里就得写别人的行为，覆盖率的调用次数也混在一起。三种情况：
+- 调的是别的模块：CMock 桩，本来就如此；
+- 调的是**同一个 `.c` 里的 static 函数**：整 TU 测法替换不了，只能真调。用例文本只写被测单元
+  自己的可观察结果（"X() 被调用一次"），不描述被调函数内部；
+- 调的是**同模块另一个 `.c` 里的函数**（如 `DMCU_prg.c` 调 `DMCU_cfg.c` 的 `MCU_vidWkupConfig`）：
+  那个 `.c` 单独编译链接（放 `support/`，需要时经 `gen_host_shim.py`），测试文件里定义同名计数桩，
+  `link_flags: ["-Wl,--allow-multiple-definition"]`——测试目标文件排在链接首位，它的定义胜出；
+  验证被调函数本身的测试文件不定义桩，链接到真实现。**不要用弱符号**：MinGW/PE 上
+  `__attribute__((weak))` 的定义解析不到跨目标文件的引用（链接报 undefined 或运行时跳到 0）。
+
+**源文件在宿主机上编不过（而且不是 include 问题）时，用 `gen_host_shim.py`，不要手改副本。**
+典型的是 32 位向量表存函数地址：`(uint32)(uint32 *)&Reset_Handler` 在 64 位 gcc 上是
+"initializer element is not constant"，整个文件被拒，文件里的其他单元也测不了。
+把逐字替换与理由写进 `ut_spec.json` 的 `host_shims`，脚本生成 `support/<file>_host.c`：
+每个 `old` 必须恰好出现一次、不得改变行数，副本以 `#line 1 "<原文件>"` 开头，
+于是 gcov / cppcheck / 单元验证报告仍然记在原文件上，单元验证报告第 1 节会列出全部替换。
+只允许替换目标机上也不执行的东西（未激活的表项、死代码里的常量）；
+被测单元的任何一行都不能进这个列表。
+
+```bash
+python scripts/gen_host_shim.py --spec ut_spec.json      # 每次构建前重新生成
+```
 
 用 Ceedling（Unity + CMock）在宿主机执行，gcovr 出覆盖率。
 被测模块若含 `static` 函数与文件级状态，测试文件用 `#include "<模块>_Prg.c"` 的**整 TU 测法**，
@@ -147,8 +212,13 @@ CMock 从服务层头文件自动生成桩——**这正是分层架构的回报
   包含，再让 Ceedling 单独编译一次会在链接期重复符号
 - `support/` 只放 MCAL 基础类型（`Platform_Types.h` / `Std_Types.h` / `Compiler.h`）与 OS 替身，
   **不要引入真的 MCAL 头**，否则会拖进整个寄存器映射
-- CMock 插件至少启用 `:ignore`、`:expect_any_args`、`:ignore_arg`、`:return_thru_ptr`；
-  通过指针返回值的服务接口（`DEV_GetPressure(ch, &val)`）必须靠 `:return_thru_ptr` 打桩
+- CMock 插件至少启用 `:ignore`、`:expect_any_args`、`:ignore_arg`、`:return_thru_ptr`、`:array`；
+  通过指针返回值的服务接口（`DEV_GetPressure(ch, &val)`）必须靠 `:return_thru_ptr` 打桩，
+  带缓冲区入参的（`Eeprom_Write(addr, buf, len)`）靠 `:array` 的 `_ExpectWithArrayAndReturn`
+- `:treat_externs: :include` **必配**。项目头文件的原型几乎都带 `extern`，CMock 默认跳过它们，
+  生成的 mock 是空的——症状是链接期一堆 `undefined reference`，而不是 CMock 报错
+- `:treat_as` 要把项目自己的 typedef 名（`u8`/`u16`/`u32`/`bool`）全列进去，否则 CMock
+  按结构体比较、断言信息不可读
 
 ```bash
 ceedling test:all          # 功能
@@ -159,6 +229,14 @@ python scripts/collect_coverage.py --spec ut_spec.json --build <build 目录> \
 
 覆盖率证据以**报告文件路径**记入交付物（对齐公司报告里 `Report：XXX` 的写法），
 **不往 Excel 里嵌截图**。
+
+**gcc 的分支覆盖是条件级，不是判定级。** `if (a || b)` 在 SWDD 里是 1 个分支 2 条出边，
+gcov 里是 2 个条件 4 条出边。所以：
+- 详设分支 100% 不等于 gcov 100%。前者靠用例集构造出来，后者要靠**补充测试**把每个
+  子条件的两侧都走到（标 `/* supplementary - 不新增分支：覆盖 xxx 子条件 */`）；
+- 短路后不可达的子条件（前一个子条件为真时后一个永远不求值，或数据上矛盾）在 gcov 里
+  永远是缺口，**报告的「未达成说明」写清是哪个子条件、为什么不可达**，不要硬凑；
+- 与 VectorCAST 等按判定计数的工具对数时，先把口径说明白，再比数字。
 
 ### 第 5 步 — 对账：让用例表与实际测试一致（必做）
 
@@ -188,7 +266,11 @@ python scripts/reconcile_cases.py ... --apply   # 确认后落盘
 剩下两类必须人工判：分支组合在流程图上找不到完整路径（多半是注释只写了增量分支）、
 用例始终没有测试实现。
 
-### 第 6 步 — 生成执行与覆盖率证据报告
+还有一类它**只报不改**：同一个用例号被两个路径不同（且互不为子集）的测试同时声明。
+以前这会让每次 `--apply` 把用例改成后到的那条路径、下次再改回去，永不收敛。
+现在先到者胜出、后到者按"未标记"列出——去改注释，给第二条路径一个自己的用例号。
+
+### 第 6 步 — 生成单元验证报告（HTML）
 
 ```bash
 python scripts/build_evidence.py --spec ut_spec.json --build <build 目录> \
@@ -196,7 +278,7 @@ python scripts/build_evidence.py --spec ut_spec.json --build <build 目录> \
     --coverage coverage.json --root .
 ```
 
-产出 `<output_dir>/report/unit_verification_evidence.html`，是交付物里"证据"列引用的那份东西：
+产出 `<output_dir>/report/unit_verification_report.html`，是交付物里"证据"列引用的那份东西：
 总体结果、逐条用例的输入/期望/实测、每函数复杂度与语句分支指标、
 以及 gcovr 的逐行标注源码（`coverage/index.html`）。
 **报告里只写被测软件的事实，不写工具选型的辩解。**"开源链相比商用工具缺什么"
@@ -251,7 +333,8 @@ python scripts/self_check.py --cases cases.json --model swdd_model.json \
 | 软件单元测试用例 | AU-QR-R&D-046 | 一模块一 sheet，13 列；同一函数的连续行只在首行填单元 ID/名称 |
 | 软件单元测试报告 | AU-QR-R&D-048 | 测试目标 / 静态验证 / 覆盖率 / 测试实施 / 缺陷解决 五个总结区 |
 | 软件单元测试追溯矩阵 | AU-QR-R&D-038 | 正向（用例→详设）+ 反向（详设→用例），含四项统计与设计覆盖率 |
-| 单元验证证据报告 | 无模板（HTML） | 配置数据 / 总体结果 / 用例执行清单 / 用例明细 / 代码指标 / 逐行覆盖 |
+| 单元验证报告（HTML） | 无模板（HTML） | 配置数据 / 总体结果 / 用例执行清单 / 用例明细 / 代码指标 / 逐行覆盖 |
+| 静态验证报告（HTML） | 无模板（HTML） | MISRA/cppcheck 结论、按规则统计、发现明细（附源码行）、逐单元 CCN、命令行 |
 
 三份 Excel 里的比率均以百分比格式呈现（`0.0%`），单元格仍是数值，可继续参与统计。
 
@@ -265,6 +348,11 @@ python scripts/self_check.py --cases cases.json --model swdd_model.json \
 - **不要伪造覆盖率**。测试没跑就写"未执行"，别填 0 或 100%——两者都会误导评审。
 - **克隆模板后必须先解除合并单元格再写入**。openpyxl 对合并区域非锚点单元格的写入会**静默丢弃**，
   表现为零散几行数据凭空消失。`build_deliverables.py` 的 `_reset_sheet()` 已处理。
+  同一函数还会清掉模板作者留在数据 sheet 上的**示例图片、图表和批注**——048 模板的
+  「静态验证结果」页就带着一张命名规则截图，`delete_rows` 删不掉它，会压在重生成的表上。
+  封面页的 logo 不在重填范围，不受影响。
+- **重跑 `build_deliverables.py --only report` 会覆盖手工填写的理由单元格**（未达成说明、
+  MISRA 偏离理由、缺陷分析）。重跑前先把这些格子读出来，写完再回填；不要靠记忆重写。
 - **不要直接采信 Ceedling gcov 插件给出的覆盖率汇总**。它按 `:paths :source` 过滤，
   而整 TU 测法下被测文件恰恰不在那条路径上，**结果是汇总里根本没有被测文件，只剩 mock 和 vendor 代码**，
   数字看着有、其实测的是别的东西。用 `collect_coverage.py`，它按 `source_dirs` 的**完整路径**过滤。
@@ -283,6 +371,10 @@ python scripts/self_check.py --cases cases.json --model swdd_model.json \
   1. `_feasibility.py` 沿路径做常量传播，判定与此前赋的常量矛盾就剔除该路径。
      它只认最简单的 `x = <常量>` 赋值，遇到表达式、函数返回值、未知变量就**忘掉**该变量
      而不是猜——所以不会误杀可行路径，代价是抓不全。跨函数、数组下标、循环多轮都抓不到。
+     `x++` / `x += n` / `&x` 同样会让它忘掉 `x`（否则 `i = 0` 之后的 `i < 64` 永远为真，
+     循环出口被当成不可达）。第二条规则：**同一个只含局部变量的判断在路径上出现两次、
+     其间没有语句改过这些变量，两次结果必须一样**——`if (BBS_ARMED == sta) … if (BBS_ARMED == sta)`
+     的 Y/N 交叉组合直接剔除。局部变量取自流程图里 `类型 名字` 形式的声明节点。
   2. 抓不到的由第 5 步 `reconcile_cases.py` 事后收回来。
 
   彻底判定可行性需要符号执行加约束求解，与"SWDD 文本就能跑"的路线不是一个量级，不做。
@@ -314,6 +406,26 @@ python scripts/self_check.py --cases cases.json --model swdd_model.json \
 - **优先级不是拍脑袋**。取自 SWDD 的 `Priority = Complexity × Importance`，按配置阈值映射 H/M/L。
 - **MC/DC 按 ASIL 决定**。QM 项目默认不做；需要时把 `coverage_targets.mcdc` 设成目标值，
   gcc 14+ 用 `-fcondition-coverage`、clang 18+ 用 `-fcoverage-mcdc`。
+- **一个用例号只对应一条路径**。给同一个号标两条不同路径，对账会来回翻；
+  同一条路径的多组取值才共用一个号（见上一条 supplementary 判据）。
+- **固定地址的寄存器块（`#define IP_X ((X_Type *)0x4xxxxxxx)`）在宿主机上一碰就崩**。
+  整 TU 测法下先包含定义它的头，再 `#undef IP_X` / `#define IP_X (&ut_x)` 指向测试里的 RAM 副本，
+  然后才 `#include` 被测 `.c`；寄存器的写入就成了可断言的值。不要为此做 shim 副本。
+- **配置表长度宏与初始化项数不一致**（`T tab[N] = { 23 项 }`，N = 24）：多出的项是全零，
+  循环会把"引脚 0 / 通道 0"当真配置。gcc 不报，MISRA 9.3 会报——静态结果里的 9.3 要看一眼，
+  测试则按表实际内容断言并把它记进报告的缺陷项，而不是绕开。
+- **函数内 `static` 局部变量的状态跨测试残留**。整 TU 测法能清文件级静态量（`setUp` 里 memset），
+  但函数内的 `static u8 u8Delay` 谁都摸不到，只能靠"前一个测试跑到了某个值"。
+  这类测试**必须写明顺序依赖**（注释 + 用例的预置条件），并且放在同一个测试文件里；
+  要彻底解耦就得改源码把它提升成文件级静态量——那是设计问题，先记进报告，不要在测试里绕。
+- **CMock 生成的 mock 是空的、链接期一堆 undefined reference**：头文件原型带 `extern`，
+  缺 `:treat_externs: :include`。见第 4 步。
+- **cppcheck 报 0 条发现或 0 个函数**：多半是 MemMap `#error` 或编译器抽象头让它放弃了整个文件，
+  不是代码干净。见第 3 步。
+- **与 VectorCAST/商用工具的历史结果对比**时，用 `parse_vcast_report.py` 把 full report 结构化，
+  先看三件事：探针点（靠改写被测代码走到的分支，不是靠输入）、被打桩的模块内部函数
+  （被测单元自己的一部分被替掉了）、没有期望数据的用例（只是跑了，没验证）。
+  流程见 `references/tool-migration.md`。
 
 ## 工具链（全开源）
 

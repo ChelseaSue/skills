@@ -35,19 +35,37 @@ def _gcovr_cmd(build: Path, root: Path, filters: list[str]) -> list[str]:
     return cmd
 
 
+def _ranges(nums: list[int]) -> str:
+    out, i = [], 0
+    while i < len(nums):
+        j = i
+        while j + 1 < len(nums) and nums[j + 1] == nums[j] + 1:
+            j += 1
+        out.append(str(nums[i]) if i == j else f'{nums[i]}-{nums[j]}')
+        i = j + 1
+    return ','.join(out)
+
+
 def _uncovered_lines(build: Path, root: Path, filters: list[str]) -> dict:
-    """Uncovered line numbers per file, from gcovr's text report.
+    """Uncovered line numbers per file, from gcovr's JSON report.
 
     They are what turns an unexplained "target not reached" row in the report
     into a reviewable statement about which code is missing and why.
+    (The text report wraps long file names onto their own line, so it is not
+    parsed; the JSON carries the same line data unambiguously.)
     """
-    proc = subprocess.run(_gcovr_cmd(build, root, filters) + ['--txt', '-'],
+    proc = subprocess.run(_gcovr_cmd(build, root, filters) + ['--json', '-'],
                           capture_output=True, text=True, errors='replace')
     missing: dict[str, str] = {}
-    for line in (proc.stdout or '').splitlines():
-        parts = line.split()
-        if len(parts) >= 5 and parts[0].endswith('.c') and parts[-1][:1].isdigit():
-            missing[parts[0]] = parts[-1]
+    try:
+        data = json.loads(proc.stdout or '{}')
+    except json.JSONDecodeError:
+        return missing
+    for f in data.get('files', []):
+        nums = sorted({int(l['line_number']) for l in f.get('lines', [])
+                       if not l.get('gcovr/noncode') and int(l.get('count', 0)) == 0})
+        if nums:
+            missing[f.get('file', '')] = _ranges(nums)
     return missing
 
 

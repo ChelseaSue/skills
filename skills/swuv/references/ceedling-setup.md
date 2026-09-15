@@ -42,15 +42,24 @@ unit_test/<模块>/
 `:none` / `:all` / `:tests` / `:mocks`。写 `TRUE` 会直接校验失败：
 `ERROR: :project >> :use_test_preprocessor is ':true' but must be one of {...}`
 
-**3. CMock 插件至少启用这四个。**
-通过指针返回值的服务接口（`DEV_GetPressure(ch, &val)`）必须靠 `:return_thru_ptr` 打桩；
-不关心入参的场景要 `:expect_any_args`，否则只能用 `_ExpectAndReturn` 精确匹配。
+**3. CMock：`:treat_externs: :include`、六个插件、项目 typedef 全进 `:treat_as`。**
+
+- `:treat_externs: :include` 必配。项目头文件里的原型几乎都写成 `extern void X(void);`，
+  CMock 默认**跳过** extern 原型，生成的 `mock_X.c` 是空的。CMock 本身不报错，
+  症状出现在链接期：一串 `undefined reference to 'X_ExpectAndReturn'`。
+- 通过指针返回值的服务接口（`DEV_GetPressure(ch, &val)`）必须靠 `:return_thru_ptr` 打桩；
+  带缓冲区入参的（`Eeprom_Write(addr, buf, len)`）要 `:array` 才有 `_ExpectWithArrayAndReturn`；
+  不关心入参的场景要 `:expect_any_args`，否则只能用 `_ExpectAndReturn` 精确匹配。
+- `:treat_as` 里除了 AutoSAR 的 `uint8/uint16/...`，还要列项目自己的别名（`u8`/`u16`/`u32`/`bool`），
+  否则 CMock 把它们当结构体做 memcmp，断言信息只有一串十六进制。
 
 ```yaml
 :cmock:
   :mock_prefix: mock_
+  :treat_externs: :include
   :plugins:
     - :ignore
+    - :array
     - :expect_any_args
     - :ignore_arg
     - :callback
@@ -60,7 +69,16 @@ unit_test/<模块>/
     uint16: HEX16
     uint32: UINT32
     boolean: UINT8
+    u8: HEX8            # 项目别名，来自 ut_spec.json 的 cmock_treat_as
+    u16: HEX16
+    u32: UINT32
+    bool: UINT8
 ```
+
+`scripts/gen_project_yml.py --spec ut_spec.json` 会按上面的形状生成 `project.yml`，
+include 列表、宏、`cmock_treat_as` 都来自 `ut_spec.json`，不存在的目录自动丢弃
+（Ceedling 遇到不存在的 include 目录直接拒绝启动）。已有的 `project.yml` 不会被覆盖，
+要重新生成加 `--force`。
 
 **4. 把 gcov 插件的报告整个关掉**，覆盖率由 `scripts/collect_coverage.py` 与
 `scripts/build_evidence.py` 负责。
@@ -167,7 +185,7 @@ void test_SCN_SanitizeGear_002_max_uint8_is_off(void)     { ...SCN_SanitizeGear(
 ```
 
 `255 > 1` 和 `2 > 1` 走的是**同一条分支 1**，所以两个测试实现的是同一条用例，
-第二个不是"用例集之外"的东西。**一条用例有多个测试是正常的**，证据报告会把它们归到一组。
+第二个不是"用例集之外"的东西。**一条用例有多个测试是正常的**，单元验证报告（HTML）会把它们归到一组。
 
 真正的 supplementary 长这样——它跨两个周期先走分支 1 再走分支 2，
 没有任何单条用例是这个路径：
@@ -206,7 +224,46 @@ pip install gcovr
 
 Ruby 装完后 `C:\Ruby33-x64\bin` 需要在 PATH 里。gcovr 走 pip 而非 gem。
 
-## 两个必踩的坑
+## 宿主机编不过的目标机代码
+
+`gen_host_shim.py` 只为一种情况存在：文件里某个**不执行**的构造让 64 位 gcc 拒绝整个文件。
+实例 `DMCU_cfg.c`：
+
+```c
+uint32 const FastWkupBootVectorTable[] = {
+    (const uint32)Standby_Stack_StartAddr,
+    (const uint32)((uint32 *)&MCU_vidFastWkupBootAddress),   /* 64 位上：not constant */
+    (const uint32)((uint32 *)&undefined_handler),
+};
+```
+
+`-m32` 在 MinGW64 上没有运行库，`#define uint32 uintptr_t` 会把整个 TU 的 ABI 改掉——都不行。
+于是在 `ut_spec.json` 里声明两处逐字替换（`old`→`0u`，附理由），脚本生成
+`support/DMCU_cfg_host.c`，测试文件 `#include "DMCU_cfg_host.c"` 而不是原文件。
+副本首行 `#line 1 "<原文件绝对路径>"`：gcovr 把覆盖率记到原文件、逐行标注读的也是原文件。
+
+副本放在 `support/` 下并**沿用原文件名**（`support/DMCU_cfg.c`）时，Ceedling 会因为测试文件
+`#include "DMCU_cfg.h"` 自动把它编成独立目标文件链接进来——于是它不再是整 TU 的一部分，
+测试文件里可以定义同名函数把它的内部函数顶掉（`link_flags: -Wl,--allow-multiple-definition`，
+测试目标文件在链接顺序里排第一）。这就是"一条用例只验证一个单元"在跨文件内部调用上的做法。
+整 TU 包含（`#include "X_host.c"`）只在需要摸文件内 static 量时用。
+
+寄存器块另有办法，不需要副本：
+
+```c
+/* support/ut_host_regs.h — 通过 compile_flags: ["--include=ut_host_regs.h"] 强制包含进每个编译单元 */
+#if __has_include("S32K311_DCM_GPR.h")      /* unity.c / cmock.c 没有工程 include 路径 */
+#include "S32K311_DCM_GPR.h"                /* 先让厂商头定义 IP_DCM_GPR */
+#undef IP_DCM_GPR
+extern DCM_GPR_Type ut_dcm_gpr;             /* 定义放在 support/<模块>_test_globals.c */
+#define IP_DCM_GPR (&ut_dcm_gpr)
+#endif
+```
+
+强制包含而不是写在测试文件里，是因为被测 `.c` 若被单独编译（见上），测试文件里的
+`#define` 根本影响不到它。
+
+## 三个必踩的坑
 
 ### `*_ReturnThruPtr_*` 的存储必须活到调用发生
 
@@ -240,6 +297,25 @@ static void expect_pressure(uint16 abs_kpa, OXY_Status_t st)
 ```
 
 `setUp()` 里把索引清零。
+
+### 函数内 static 状态只能靠测试顺序
+
+文件级静态量在 `setUp()` 里 memset 就能复位；**函数内**的 `static u8 u8DelayCnt;`
+从测试文件里摸不到——它没有名字可引用。要测"计数到 N 后触发"的分支，只能靠前一个测试
+把它推到 N-1，本测试再跑一个周期。做法：
+
+```c
+/* ABBSM.015 - covers branches 2/4/9: 21 个周期内 u8DelayEnterIntTrg 累加到 21 */
+void test_ABBSM_vidMainFunction_015_delay_counting(void) { ... 21 cycles ... }
+
+/* ABBSM.016 - covers branches 2/4/10: 依赖 test_015 留下的 u8DelayEnterIntTrg == 21，
+   Unity 按文件内定义顺序执行，不要移动这两个函数的相对位置 */
+void test_ABBSM_vidMainFunction_016_delay_expired(void) { ... 1 cycle ... }
+```
+
+两个测试必须在**同一个测试文件**里（Ceedling 每个测试文件一个可执行程序，静态量不跨文件），
+用例的预置条件要写上"在 xxx 用例之后执行"。这是源码的可测性缺陷，报告里记一笔；
+不要为了解耦在测试里加 `#define static` 之类的花招——那样测的就不是交付代码了。
 
 ### 无限循环的任务入口是可测的
 

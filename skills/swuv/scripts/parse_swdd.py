@@ -32,15 +32,16 @@ NODE_RE = re.compile(
     r'^\s*([A-Za-z_][A-Za-z0-9_]*)\s*'
     r'(?:\[\(|\(\[|\[|\{)\s*"?(.*?)"?\s*(?:\)\]|\]\)|\]|\})\s*$'
 )
-# Edge with a numbered label:  Src -->|"12) N"| Dst["..."]
+# The source side of an edge may be a bare id or an inline node definition:
+#   Src -->|"12) N"| Dst["..."]        McuInit["Mcu_Init(&amp;x)"] --> Next["..."]
+_SRC = (r'^\s*([A-Za-z_][A-Za-z0-9_]*)\s*'
+        r'(?:(?:\[\(|\(\[|\[|\{)\s*"?.*?"?\s*(?:\)\]|\]\)|\]|\})\s*)?')
+# Edge with a numbered label
 EDGE_LABELLED_RE = re.compile(
-    r'^\s*([A-Za-z_][A-Za-z0-9_]*)\s*-->\s*\|\s*"([^"]*)"\s*\|\s*'
-    r'([A-Za-z_][A-Za-z0-9_]*)'
+    _SRC + r'-->\s*\|\s*"([^"]*)"\s*\|\s*([A-Za-z_][A-Za-z0-9_]*)'
 )
-# Plain edge:  Src --> Dst
-EDGE_PLAIN_RE = re.compile(
-    r'^\s*([A-Za-z_][A-Za-z0-9_]*)\s*-->\s*([A-Za-z_][A-Za-z0-9_]*)'
-)
+# Plain edge
+EDGE_PLAIN_RE = re.compile(_SRC + r'-->\s*([A-Za-z_][A-Za-z0-9_]*)')
 BRANCH_LABEL_RE = re.compile(r'^\s*(\d+)\s*\)\s*(.*)$')
 
 MERMAID_BLOCK_RE = re.compile(r'```mermaid\s*\n(.*?)```', re.S)

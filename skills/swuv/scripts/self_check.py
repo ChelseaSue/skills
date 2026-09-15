@@ -75,10 +75,15 @@ def check(cases: list[dict], model: dict, spec: dict,
           '' if not (bad_id or dup) else f'格式错{bad_id[:3]} 重复{sorted(dup)[:3]}')
 
     # 6 - design method within the allowed set
-    allowed_design = spec.get('design_method_text', '')
-    bad_dm = [c['case_name'] for c in cases if not c.get('design_method')]
+    # The column holds method names only ("基于需求分析、等价类、边界值"); any
+    # explanation of how the values were chosen belongs in the steps.
+    from apply_case_text import design_method_error
+    allowed_dm = spec.get('derivation_methods', [])
+    bad_dm = [(c['case_name'], design_method_error(c.get('design_method', ''), allowed_dm))
+              for c in cases]
+    bad_dm = [(n, e) for n, e in bad_dm if e]
     r.add('6', '设计方法取值合法', not bad_dm,
-          '' if not bad_dm else f'{len(bad_dm)} 条为空')
+          '' if not bad_dm else f'{len(bad_dm)} 条不合规，例如 {bad_dm[0][0]}: {bad_dm[0][1]}')
 
     # 10 - precondition present
     bad_pre = [c['case_name'] for c in cases if not c.get('precondition')]

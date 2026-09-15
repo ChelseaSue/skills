@@ -94,7 +94,13 @@ def reconcile(cases: list[dict], model: dict, spec: dict, root: Path) -> dict:
     repaired, added, unresolved, bare = [], [], [], []
     mislabeled: list = []
     supplementary: list = []
+    conflicts: list = []
     claimed: set[str] = set()
+    # case name -> branch set a test earlier in this run established for it.
+    # A later test quoting the same number with a *different* path is a
+    # labelling conflict, not new evidence; repairing the case twice would just
+    # ping-pong between the two paths on every run.
+    settled: dict[str, set[int]] = {}
 
     # deterministic order so a rerun produces the same numbering
     for test in sorted(marks):
@@ -110,9 +116,17 @@ def reconcile(cases: list[dict], model: dict, spec: dict, root: Path) -> dict:
                 claimed.add(name)
             continue
 
+        if name and name in settled and walked and not (walked >= settled[name]
+                                                          or settled[name] >= walked):
+            conflicts.append((test, name, sorted(settled[name]), sorted(walked)))
+            name = ''          # fall through: treated like an unlabelled test
+            mark = dict(mark, case_name='')
+
         if name:
             case = by_name[name]
             want = set(case.get('covers_branches') or [])
+            if walked:
+                settled.setdefault(name, walked)
             # A superset is not drift: a test that drives a loop over several
             # items legitimately walks both arms of a decision inside it, so it
             # covers everything the case asks for and more.
@@ -223,6 +237,7 @@ def reconcile(cases: list[dict], model: dict, spec: dict, root: Path) -> dict:
     return {'cases': out, 'repaired': repaired, 'added': added,
             'unresolved': unresolved, 'bare': bare,
             'mislabeled': mislabeled, 'supplementary': supplementary,
+            'conflicts': conflicts,
             'restored': restored,
             'orphan_cases': orphan_cases}
 
@@ -248,6 +263,13 @@ def report(res: dict) -> None:
         for unit, name, cid, br, gained in res['restored']:
             print(f"  {cid} {name:26} 覆盖分支 {br}")
             print(f"  {'':>{len(cid) + 1}} 补回的分支 {gained}")
+    if res['conflicts']:
+        print()
+        print(f"同一用例号被路径不同的测试重复声明 ({len(res['conflicts'])} 条)：")
+        print("  第一个测试已把该用例修成它的路径；后面这些测试按“未写用例号”处理（匹配已有用例或补建），请把注释改成它们真正对应的用例号。")
+        for test, name, first, walked in res['conflicts']:
+            print(f"  {test}")
+            print(f"    注释写的 {name}，该用例已按 {first} 修正，本测试实走 {walked}")
     if res['mislabeled']:
         print()
         print(f"标记注释里的用例号写错了 ({len(res['mislabeled'])} 条)：")

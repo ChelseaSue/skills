@@ -148,6 +148,15 @@ def _reset_sheet(ws) -> None:
         ws.unmerge_cells(str(rng))
     if ws.max_row:
         ws.delete_rows(1, ws.max_row)
+    # Example pictures / charts the template author left on a data sheet (the
+    # 048 static-results sheet carries a screenshot of a naming-rule table)
+    # survive delete_rows and would sit on top of the regenerated table.
+    ws._images = []
+    ws._charts = []
+    # Cell comments belong to the example rows that were just deleted.
+    for row in ws.iter_rows():
+        for c in row:
+            c.comment = None
 
 
 def build_trace(cases: list[dict], model: dict, spec: dict,
@@ -325,8 +334,12 @@ def build_report(cases: list[dict], model: dict, spec: dict, static: dict | None
           [['一轮静态验证/First round', static.get('object', spec.get('component', '')),
             '编码规则 MISRA C:2012 / 圈复杂度',
             'MISRA mandatory=0; 圈复杂度<=%s' % spec.get('static', {}).get('cyclomatic_max', 15),
-            static.get('summary', '未执行/Not run'),
-            'pass' if static.get('misra_ok') and static.get('cyclomatic_ok') else 'not run']])
+            (static.get('summary', '未执行/Not run')
+             + (f"；报告/Report：{static['report']}" if static.get('report') else '')),
+            ('not run' if not static.get('summary')
+             else 'Pass' if static.get('misra_ok') and static.get('cyclomatic_ok')
+             else 'Pass with conditions' if static.get('misra_ok')
+             else 'Fail')]])
 
     section('3. 覆盖率情况总结/Summary of coverage situation')
     mcdc_target = tgt.get('mcdc')
