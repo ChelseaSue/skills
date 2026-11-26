@@ -1,0 +1,13 @@
+{
+  "_comment": "Claude writes one entry per SWIT ID (cases/apply_text.py merges it). Use real numbers from the SAD constraints and the source constants; state equivalence classes and boundary values inside the steps. design_method lists method names only. Writing an entry for a 'stale' case confirms it was re-checked against the changed anchor.",
+  "SWIT-00002": {
+    "name": "DADC_enuGetAdc1SingleAd - converted value reaches HADC",
+    "target": "SWAD-47667: the raw ADC1 group-0 result registered by DADC with the MCAL is returned unchanged to the consumer HADC; invalid channel / NULL pointer are rejected",
+    "precondition": "HADC + DADC linked with real code; MCAL Adc mocked; HADC_vidInit executed with successful calibration so DADC registered its result buffer",
+    "steps": "1. Write raw value 1000 into the registered buffer at channel Backup_Battery (1)\n2. Call DADC_enuGetAdc1SingleAd(1, &out)\n3. Call with channel DADC_u16ADC1_NB_VAL (5, first invalid) and with NULL pointer",
+    "expected": "Step 2: LBTY_OK and out == 1000. Step 3: LBTY_INDEX_OUT_OF_RANGE and LBTY_NULL_POINTER",
+    "criteria": "Return codes and value equal exactly",
+    "design_method": "Requirement analysis, equivalence partitioning, boundary value analysis",
+    "priority": "Medium"
+  }
+}

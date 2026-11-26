@@ -1,0 +1,29 @@
+{
+  "skill_name": "swit",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "用 swit 模板给 BBS 项目做第一次软件集成测试，软件架构文档在 swit/实例/输入/ 下，源码在 BBS_K311_APP/src/Source。",
+      "expected_output": "status 判定 full；ingest 得到 4 模块 / 23 组件 / 152 接口 / 12 动态行为 / 9 资源 / 8 性能（含 BBS extra_anchors），ID 全部为 SWAD-xxxxx；用例 ID 为 SWIT-00001 起；输出 050/056/052/022/236/238 六份；转 SWE.6 用例判 NA；check 报告 IMAGE-ONLY 的读图转写 TODO 与 TBD 人工项",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "软件架构文档升级了（DADC_vidInit 增加了参数，删掉了参数管理时序），帮我同步更新集成测试。",
+      "expected_output": "status 判定 sad-change；diff 列出 modified interface SWAD-47666 与 removed dynamic SWAD-57816；SWIT-00001 保留 ID 标 stale，参数管理时序用例标 Obsolete 不复用 ID；050/056/052/022 修订记录写入变更摘要；同时输出 236 与 238",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "只做回归测试，上一轮的软件集成测试记录是 out/BBS_P519_V436-Software Integration Test Records_1.xlsx，HADC_prg.c 改过。",
+      "expected_output": "按上一轮失败/未执行/缺陷关联与 HADC 变更影响选择用例并逐条给理由；只输出 237 与 238，不输出 236；报告第 4 节同时列首轮与回归轮",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "这个项目的 SAD 是 sad-generator 生成的 markdown（evals/fixtures/mini_sad.md），做集成测试还缺哪些输入？",
+      "expected_output": "能解析 md：2 模块 / 2 组件 / 5 接口（横向 API 表）/ 3 动态行为（PlantUML 状态机、PlantUML 与 Mermaid 时序直接解析）；指出 SAD 无架构 ID（NO-ID，不编造）；列出缺失输入：swit_project.json 中的源码目录、目标机 map、环境差异、模板目录",
+      "files": ["evals/fixtures/mini_sad.md"]
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "_comment": "Default rules for SADs built on the ASPICE SAD template (AU-QR-R&D-032 family), whether exported from CodeBeamer (docx, one ID table per item) or written by sad-generator (md). Rules match on bilingual heading TITLES (numbering stripped), never on chapter numbers. A project overrides any key via swit_project.json -> sad.profile_overrides; extra anchors go to sad.extra_anchors.",
+  "item_detection": {
+    "_comment": "id_table: an item is a heading followed by a 2-column table whose first cell matches id_label_regex (CodeBeamer export). heading: IDs are searched in the heading text with id_regex. auto: id_table if any such table exists, else heading.",
+    "mode": "auto",
+    "id_label_regex": "^[A-Z][A-Z0-9]*_ID[:：]?$",
+    "id_regex": "\\b(?:SWAD|SAD|SWA|ARC)-\\d{3,7}\\b",
+    "upstream_label_regex": "^(Upstream References|上游引用|上游追溯)",
+    "downstream_label_regex": "^(Downstream References|下游引用|下游追溯)",
+    "meta_row_labels": ["Revision:", "Priority:", "Severity:", "Status:"]
+  },
+  "components_chapter_regex": "(?i)^(软件组件\\s*)?software components|^软件组件",
+  "module_exclude_regex": "(?i)standard/cots/reused|^reus",
+  "component_exclude_regex": "(?i)standard/cots/reused|reusability|used apis|new/modified apis|^cots",
+  "module_short_regex": "([A-Za-z][A-Za-z0-9_]*)",
+  "component_short_regex": "([A-Za-z][A-Za-z0-9_]*)",
+  "interface": {
+    "syntax_row_regex": "(?i)^(syntax|prototype|原型|签名|函数原型)\\s*[:：]?$",
+    "api_table_header_regex": "(?i)^(syntax|prototype|signature|原型|签名|原型/签名|函数原型)$",
+    "exclude_within_regex": "(?i)used apis|external interface|dependenc|外部接口|依赖"
+  },
+  "dependency_section_regex": "(?i)external interface|dependenc|外部接口|依赖",
+  "resource_constraint_regex": "(?i)resources? constraints?|资源约束",
+  "anchors": [
+    {"category": "dynamic", "kind": "state_machine", "title_regex": "(?i)^(软件运行模式\\s*)?software operating modes?$|^软件运行模式$"},
+    {"category": "dynamic", "kind": "state_machine", "title_regex": "(?i)^(软件功能模式\\s*)?software functional modes?$|^软件功能模式$"},
+    {"category": "dynamic", "kind": "sequence", "within_regex": "(?i)sequence management|时序管理", "leaf": true, "title_regex": ".*"},
+
+    {"category": "resource", "title_regex": "(?i)^(共享资源\\s*)?shared resources?$|^共享资源$"},
+    {"category": "resource", "title_regex": "(?i)^(共享资源保护\\s*)?shared resources? protection|^共享资源保护"},
+    {"category": "resource", "title_regex": "(?i)^(内存消耗\\s*)?memory consumption|^内存消耗"},
+    {"category": "resource", "title_regex": "(?i)^resources? constraints?$|^资源约束", "in_components": true, "aggregate": "module",
+     "name": "Component Resource Constraint - {module}"},
+
+    {"category": "performance", "title_regex": "(?i)^(进程识别\\s*)?processes identification|^进程识别"},
+    {"category": "performance", "title_regex": "(?i)^(时基识别\\s*)?timing bases identification|^时基识别"},
+    {"category": "performance", "title_regex": "(?i)^(中断\\s*)?interrupts$|^中断$", "within_regex": "(?i)real time architecture|实时架构"},
+    {"category": "performance", "title_regex": "(?i)^(循环任务\\s*)?cyclic tasks|^循环任务"},
+    {"category": "performance", "title_regex": "(?i)worst case cpu load|最坏.*负载"},
+    {"category": "performance", "title_regex": "(?i)^(内存大小\\s*)?memory size|^内存大小"}
+  ],
+  "transition_table": {
+    "_comment": "State-transition tables: columns located by header text; label_regex handles '[TRANS_A_TO_B] | condition' tables.",
+    "from_regex": "(?i)^(from|source|start|current|起始|源状态|当前状态|起始状态)",
+    "to_regex": "(?i)^(to|target|next|destination|跳转|目标状态|下一状态|跳转状态)",
+    "cond_regex": "(?i)(condition|trigger|event|条件|触发)",
+    "label_regex": "^\\[?\\s*TRANS_([A-Z0-9_]+?)_TO_([A-Z0-9_]+?)\\s*\\]?$"
+  }
+}

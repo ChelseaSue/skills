@@ -1,0 +1,419 @@
+{
+ "standard": "ISO 15765-2:2024 DoCAN 传输层",
+ "_note": "要点为自述概括，不是标准原文；页码为 PDF 页码。",
+ "items": [
+  {
+   "id": "CANTP-SEG-01",
+   "standard": "ISO 15765-2",
+   "standard_key": "ISO15765-2",
+   "clause": "9.4.2~9.4.5",
+   "title": "单帧/首帧/连续帧/流控",
+   "requirement": "能放进一帧的数据用单帧；否则首帧 + 连续帧，接收方在收到首帧（及每块结束）后发流控帧；收齐最后一个连续帧才交给上层。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "触发多帧请求与多帧响应，检查 FF → FC → CF… 序列。",
+   "source": {
+    "page": 25,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "CANTP-SN-01",
+   "standard": "ISO 15765-2",
+   "standard_key": "ISO15765-2",
+   "clause": "9.6.4.3",
+   "title": "序号规则",
+   "requirement": "首帧视为序号 0，首个连续帧为 1，逐帧加 1，15 之后回绕为 0；流控帧不影响序号。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "发送超过 16 个连续帧的长报文，检查序号回绕。",
+   "source": {
+    "page": 33,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "CANTP-SN-02",
+   "standard": "ISO 15765-2",
+   "standard_key": "ISO15765-2",
+   "clause": "9.6.4.4",
+   "title": "序号错误中止接收",
+   "requirement": "收到序号不符的连续帧时中止接收并通知上层错误。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "source": {
+    "page": 33,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "CANTP-SF-01",
+   "standard": "ISO 15765-2",
+   "standard_key": "ISO15765-2",
+   "clause": "9.6.2.2",
+   "title": "非法单帧被忽略",
+   "requirement": "SF_DL 为 0、超出帧可容纳长度、PCI 低半字节非法、或填充模式下帧长不为 8 的单帧被忽略。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "注入 SF_DL=0、SF_DL=8（经典 CAN 普通寻址）、帧长 <8 的单帧（启用填充时），断言忽略。",
+   "source": {
+    "page": 30,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "CANTP-FF-01",
+   "standard": "ISO 15765-2",
+   "standard_key": "ISO15765-2",
+   "clause": "9.6.3.2",
+   "title": "首帧长度检查",
+   "requirement": "CAN_DL<8 的首帧、FF_DL 小于最小值的首帧被忽略且不发流控；FF_DL 超过接收缓冲区时中止并回流控 Overflow；不足 4096 却用了扩展长度编码的首帧被忽略。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "注入 FF_DL > 缓冲区 → 回 FC(FS=OVFLW)；FF_DL=7 → 忽略不回 FC。",
+   "source": {
+    "page": 32,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "CANTP-FC-01",
+   "standard": "ISO 15765-2",
+   "standard_key": "ISO15765-2",
+   "clause": "9.6.5.2",
+   "title": "非法流控状态中止发送",
+   "requirement": "收到流状态（FS）为保留值的流控帧时中止发送并通知上层。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "source": {
+    "page": 34,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "CANTP-FC-02",
+   "standard": "ISO 15765-2",
+   "standard_key": "ISO15765-2",
+   "clause": "9.6.5.4/9.6.5.5",
+   "title": "遵守接收方的 BS/STmin",
+   "requirement": "发送方遵守流控帧给出的块大小与 STmin；STmin 为保留值时按最长 STmin（127 ms）处理。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "回复 FC(BS=2, STmin=0x7F)：每 2 个 CF 等待下一个 FC，CF 间隔 ≥127 ms（节拍）；STmin=0x80（保留）按 127 ms。",
+   "source": {
+    "page": 35,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "CANTP-FC-03",
+   "standard": "ISO 15765-2",
+   "standard_key": "ISO15765-2",
+   "clause": "9.6.5.6",
+   "title": "同一报文内流控参数不变（接收方）",
+   "requirement": "作为接收方，同一分段报文中后续流控帧使用相同的 BS 与 STmin。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "source": {
+    "page": 37,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "CANTP-WFT-01",
+   "standard": "ISO 15765-2",
+   "standard_key": "ISO15765-2",
+   "clause": "9.7 / 9.8.4",
+   "title": "等待帧次数上限",
+   "requirement": "接收方连续发送 FC(WAIT) 不超过 N_WFTmax（系统配置）；N_WFTmax=0 时不得使用 WAIT。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "config",
+   "check_hint": "ARXML CanTp 的 WFTmax 配置；若为 0 则实现中不发送 WAIT。",
+   "source": {
+    "page": 37,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "CANTP-TIM-01",
+   "standard": "ISO 15765-2",
+   "standard_key": "ISO15765-2",
+   "clause": "9.8.1 表",
+   "title": "传输层超时取值",
+   "requirement": "N_As、N_Ar、N_Bs、N_Cr 的超时值按标准规定（通常 1000 ms），规定值视为下限，实际超时不晚于规定值 +50%。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "config",
+   "params": {
+    "N_As_ms": 1000,
+    "N_Ar_ms": 1000,
+    "N_Bs_ms": 1000,
+    "N_Cr_ms": 1000
+   },
+   "check_hint": "ARXML CanTpNas/CanTpNar/CanTpNbs/CanTpNcr 在 [1000, 1500] ms 范围内（除非 OEM 另有规定）。",
+   "source": {
+    "page": 37,
+    "verified": false,
+    "by": "claude",
+    "date": "2026-11-26",
+    "note": "要点依据对标准的理解整理，尚未逐字对照该页原文，待人工核对"
+   }
+  },
+  {
+   "id": "CANTP-TIM-02",
+   "standard": "ISO 15765-2",
+   "standard_key": "ISO15765-2",
+   "clause": "9.8.1",
+   "title": "超时处理",
+   "requirement": "N_Bs 超时（等不到流控）发送方中止；N_Cr 超时（等不到连续帧）接收方中止；均通知上层。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "发首帧后不回 FC，节拍推进超过 N_Bs → 中止；收首帧后不发 CF，超过 N_Cr → 中止。",
+   "source": {
+    "page": 37,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "CANTP-UNX-01",
+   "standard": "ISO 15765-2",
+   "standard_key": "ISO15765-2",
+   "clause": "9.8.3",
+   "title": "意外 PDU 处理",
+   "requirement": "意外到达的 PDU 一律忽略（单帧和物理寻址首帧除外，它们会开始新的接收）；功能寻址的首帧一律忽略；被忽略时不通知上层。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "空闲时注入 CF/FC → 忽略；功能寻址 ID 上注入首帧 → 忽略。",
+   "source": {
+    "page": 41,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "CANTP-UNX-02",
+   "standard": "ISO 15765-2",
+   "standard_key": "ISO15765-2",
+   "clause": "9.8.3",
+   "title": "其他地址的报文不打断当前传输",
+   "requirement": "地址信息与当前分段报文不同的报文到达时，当前接收/发送继续进行。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "source": {
+    "page": 42,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "CANTP-PAD-01",
+   "standard": "ISO 15765-2",
+   "standard_key": "ISO15765-2",
+   "clause": "9.6.4.2 / 11.3.2",
+   "title": "末帧长度与填充",
+   "requirement": "发送方最后一个连续帧只带必需字节（经典 CAN 使用填充时补齐到 8 字节并用规定填充值）；接收方按协商的 RX_DL 检查帧长。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "config",
+   "check_hint": "ARXML CanTp 填充激活与填充字节配置与 OEM 规范一致。",
+   "source": {
+    "page": 32,
+    "verified": false,
+    "by": "claude",
+    "date": "2026-11-26",
+    "note": "要点依据对标准的理解整理，尚未逐字对照该页原文，待人工核对"
+   }
+  },
+  {
+   "id": "CANTP-DL-01",
+   "standard": "ISO 15765-2",
+   "standard_key": "ISO15765-2",
+   "clause": "9.5.2/9.5.3",
+   "title": "接收方适配发送方 TX_DL",
+   "requirement": "接收方始终适配发送方的 TX_DL；CAN_DL 为 8 时 RX_DL 为 8（CAN FD 下按首帧确定）。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "tp",
+     "can-fd"
+    ]
+   },
+   "method": "host-test",
+   "source": {
+    "page": 26,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "CANTP-PAR-01",
+   "standard": "ISO 15765-2",
+   "standard_key": "ISO15765-2",
+   "clause": "9.9",
+   "title": "不同地址的报文可并行",
+   "requirement": "传输层能并行处理映射到不同地址信息的报文。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "design",
+   "source": {
+    "page": 43,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "CANTP-ADR-01",
+   "standard": "ISO 15765-2",
+   "standard_key": "ISO15765-2",
+   "clause": "10.1.2",
+   "title": "每帧携带地址信息",
+   "requirement": "地址信息在每个传输层 PDU 中重复携带（按所选寻址格式）。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "config",
+   "check_hint": "ARXML CanTp 寻址格式（标准/扩展/混合）与 OEM 诊断规范一致。",
+   "source": {
+    "page": 43,
+    "verified": false,
+    "by": "claude",
+    "date": "2026-11-26",
+    "note": "要点依据对标准的理解整理，尚未逐字对照该页原文，待人工核对"
+   }
+  }
+ ],
+ "_scope": "CAN 节点适用；LIN 节点自动判为不适用。"
+}

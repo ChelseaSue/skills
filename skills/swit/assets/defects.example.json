@@ -1,0 +1,16 @@
+[
+  {
+    "_comment": "One entry per defect found by SWE.5; keep status in step with the issue tracker. Only a failing test or reproducible evidence confirms a defect.",
+    "id": "BUG-0001",
+    "title": "DMCU ROM exceeds the SAD budget",
+    "description": "Target linker map of the version under test: DMCU ROM above the 300 B budget of its SAD resource constraint (example entry)",
+    "severity": "C",
+    "status": "open",
+    "cases": ["SWIT-00173"],
+    "found_round": "1",
+    "closed_round": "",
+    "closed_on_time": true,
+    "legacy_reason": "",
+    "measure": ""
+  }
+]

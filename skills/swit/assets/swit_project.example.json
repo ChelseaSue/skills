@@ -1,0 +1,49 @@
+{
+  "_comment": "swit project configuration - one per project, normally <project>/swit/swit_project.json. Relative paths resolve against this file. Defaults: assets/swit_project.defaults.json; full BBS example: assets/examples/bbs_p519_v436.swit_project.json.",
+  "project": {
+    "name": "【TBD-项目名，如 ABC_P001】",
+    "software_name": "【TBD-软件名】",
+    "software_version": "【TBD-被测软件版本】",
+    "phase": "【TBD-样件阶段，如 C sample】",
+    "author": "【TBD-作者】",
+    "tester": "【TBD-测试人员】",
+    "reviewer": "【TBD-评审人】",
+    "asil": "QM"
+  },
+  "workspace": "swit_ws",
+  "content_language": "en",
+  "sad": {
+    "path": "【TBD-软件架构文档 .docx/.md 路径】",
+    "profile": "aspice_sad",
+    "extra_anchors": []
+  },
+  "templates": {
+    "dir": "模板"
+  },
+  "scope": {
+    "components": [],
+    "exclusions": [
+      {"name": "MCAL", "reason": "COTS vendor driver; stubbed at the driver boundary"}
+    ]
+  },
+  "sources": {
+    "root": "【TBD-源码根目录】",
+    "component_dirs": {"COMP_A": "APP/COMP_A"},
+    "include_dirs": [],
+    "defines": [],
+    "standin_includes": [],
+    "support_dir": ""
+  },
+  "target": {
+    "map_file": "【TBD-被测版本目标机构建的 .map】",
+    "map_format": "gnu",
+    "su_dirs": []
+  },
+  "kpi": {
+    "interface_coverage": 1.0, "dynamic_coverage": 1.0, "execution_rate": 1.0, "pass_rate": 1.0,
+    "defect_closure_rate": 1.0, "function_coverage": 1.0, "call_coverage": 1.0
+  },
+  "environment_difference": "【TBD-宿主机 SIL 与目标环境差异：编译器/优化级别/字长/桩替代范围/时基判定方式】",
+  "defects_file": "swit_ws/defects.json",
+  "regression": {"always_include_priority": []}
+}

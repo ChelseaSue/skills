@@ -1,0 +1,350 @@
+{
+ "standard": "ISO 14229-7:2022 UDS on LIN",
+ "_note": "要点为自述概括，不是标准原文；页码为 PDF 页码。",
+ "items": [
+  {
+   "id": "UDS7-SVC-01",
+   "standard": "ISO 14229-7",
+   "standard_key": "ISO14229-7",
+   "clause": "8.3 表2",
+   "title": "只使用 UDSonLIN 允许的服务",
+   "requirement": "LIN 响应方只实现表 2 列出的 UDS 服务；AccessTimingParameters(0x83)、Authentication(0x29)、SecuredDataTransmission(0x84)、LinkControl(0x87)、ReadMemoryByAddress(0x23)、ReadScalingDataByIdentifier(0x24)、ReadDataByPeriodicIdentifier(0x2A)、DynamicallyDefineDataIdentifier(0x2C)、WriteMemoryByAddress(0x3D) 不在 LIN 上支持。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder",
+     "server"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "config",
+   "params": {
+    "not_supported": [
+     "0x83",
+     "0x29",
+     "0x84",
+     "0x87",
+     "0x23",
+     "0x24",
+     "0x2A",
+     "0x2C",
+     "0x3D"
+    ]
+   },
+   "check_hint": "ARXML Dcm 服务表 DcmDsdSidTabServiceId 不包含上述 SID（0xB0~0xB8 为 LIN 节点配置服务，不属于 UDS）。",
+   "source": {
+    "page": 14,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "UDS7-SVC-02",
+   "standard": "ISO 14229-7",
+   "standard_key": "ISO14229-7",
+   "clause": "8.3 REQ7.4",
+   "title": "通用服务按 14229-1/-2 实现",
+   "requirement": "表 2 中标为“无 UDSonLIN 特殊要求”的服务完全按 ISO 14229-1 与 ISO 14229-2 实现（具体由 UDS1/UDS2 检查项覆盖）。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder",
+     "server"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "design",
+   "check_hint": "确认 UDS1/UDS2 中适用的检查项均已检查；本项随之判定。",
+   "source": {
+    "page": 13,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "UDS7-LEN-01",
+   "standard": "ISO 14229-7",
+   "standard_key": "ISO14229-7",
+   "clause": "8.5 REQ7.5/7.6",
+   "title": "报文长度与缓冲区按 LIN 传输层",
+   "requirement": "UDSonLIN 报文长度与收发缓冲区按 ISO 17987-2 定义；响应方声明的最大接收长度与实际缓冲区一致。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder",
+     "server"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "config",
+   "check_hint": "ARXML LinTp 接收缓冲（LinTpMaxBufReq 等）/ PduR 缓冲 ≥ 本节点最长诊断请求；与需求（如刷写要求的缓冲区大小）一致。",
+   "source": {
+    "page": 15,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "UDS7-TIM-01",
+   "standard": "ISO 14229-7",
+   "standard_key": "ISO14229-7",
+   "clause": "8.8 REQ7.10",
+   "title": "定时参数按 14229-2 并映射到 LIN",
+   "requirement": "请求/响应定时按 ISO 14229-2 实现：响应方在收到完整请求后启动 P2 计时，在 P2 内开始响应（LIN 上的 P2/P2* 取值见 17987-2）。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder",
+     "server"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "多帧请求的最后一个连续帧接收完成后才开始计 P2：断言响应首帧在 P2 节拍内准备好。",
+   "source": {
+    "page": 16,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "UDS7-NAD-01",
+   "standard": "ISO 14229-7",
+   "standard_key": "ISO14229-7",
+   "clause": "12.5 REQ3.7/3.10",
+   "title": "固定 NAD",
+   "requirement": "诊断类别 II/III 的响应方在系统设计阶段分配固定 NAD（动态分配完成后也应等于设计值）。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder",
+     "server"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "config",
+   "check_hint": "LDF configured_NAD、ARXML LinTp/LinIf 物理 NAD 与需求规定的 NAD 三者一致。",
+   "source": {
+    "page": 21,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "UDS7-NAD-02",
+   "standard": "ISO 14229-7",
+   "standard_key": "ISO14229-7",
+   "clause": "12.5 REQ3.8/3.11",
+   "title": "诊断通信忽略 NAD 0x7E",
+   "requirement": "诊断类别 II/III 的响应方不把 NAD 0x7E 当作诊断通信的广播（功能）地址，收到后应忽略。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder",
+     "server"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "config",
+   "check_hint": "ARXML LinTp 不应配置 NAD 0x7E 的功能寻址接收 N-SDU；若 OEM 需求明确要求支持 0x7E，按项目 applicability_overrides 记录与标准的偏差及理由。",
+   "source": {
+    "page": 21,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "UDS7-NAD-03",
+   "standard": "ISO 14229-7",
+   "standard_key": "ISO14229-7",
+   "clause": "12.4 REQ3.4",
+   "title": "响应使用与请求相同的寻址类型",
+   "requirement": "服务端对某种目标地址类型（物理/功能）的请求，响应采用与之对应的同类寻址格式。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder",
+     "server"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "物理请求 → 物理响应（NAD=本节点）；功能请求按 UDS7-NAD-02 / LIN2-TP-17 处理（不响应）。",
+   "source": {
+    "page": 21,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "UDS7-CC-01",
+   "standard": "ISO 14229-7",
+   "standard_key": "ISO14229-7",
+   "clause": "8.6 REQ7.8",
+   "title": "CommunicationControl 的 LIN 实现（主节点）",
+   "requirement": "LIN 主节点实现 CommunicationControl，用于启用/停用 LIN 簇的正常通信（进入/退出仅诊断模式）。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "commander"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "design",
+   "source": {
+    "page": 15,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "UDS7-CC-02",
+   "standard": "ISO 14229-7",
+   "standard_key": "ISO14229-7",
+   "clause": "8.6",
+   "title": "响应方对 CommunicationControl 的处理",
+   "requirement": "LIN 响应方若支持 0x28，其行为按 ISO 14229-1，且不得因停用正常通信而影响诊断帧（0x3C/0x3D）收发。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder",
+     "server"
+    ],
+    "features": [
+     "diag"
+    ],
+    "sid": [
+     "0x28"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "发送 28 01 01（禁收发正常报文）后，断言诊断请求仍能收到响应；再 28 00 01 恢复。",
+   "source": {
+    "page": 15,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "UDS7-ROE-01",
+   "standard": "ISO 14229-7",
+   "standard_key": "ISO14229-7",
+   "clause": "8.7 REQ7.9",
+   "title": "ResponseOnEvent 需主节点提供应答报头",
+   "requirement": "使用 ResponseOnEvent 时由主节点提供从应答报头，响应方在事件发生时通过该报头发送 ServiceToRespondTo。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "features": [
+     "diag"
+    ],
+    "sid": [
+     "0x86"
+    ]
+   },
+   "method": "design",
+   "source": {
+    "page": 16,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "UDS7-SIG-01",
+   "standard": "ISO 14229-7",
+   "standard_key": "ISO14229-7",
+   "clause": "7.2.4.1",
+   "title": "信号式故障上报",
+   "requirement": "响应方监测到的故障状态，通过信号帧周期上报给主节点（每个可更换部件建议一个状态信号）。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "design",
+   "check_hint": "LDF/Com 中存在本节点发布的故障状态信号（如错误码信号），并与 DTC/故障清单对应。",
+   "source": {
+    "page": 12,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "UDS7-DL-01",
+   "standard": "ISO 14229-7",
+   "standard_key": "ISO14229-7",
+   "clause": "13.4/13.5 REQ2.3/2.4",
+   "title": "PID 与校验和按 17987-3",
+   "requirement": "诊断帧的 PID 与校验和按 ISO 17987-3 实现（诊断帧用经典校验和）。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "config",
+   "check_hint": "与 LIN3-CKS-01 同一判据。",
+   "source": {
+    "page": 23,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  }
+ ],
+ "_scope": "收录 LIN 响应方作为 UDS 服务端的映射要求；主节点路由/调度要求标 role=commander。"
+}

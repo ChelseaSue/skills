@@ -1,0 +1,23 @@
+{
+  "skill_name": "std-compliance",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "检查一下我们这个 LIN 从节点项目的通信和诊断设计是否符合 ISO 17987 和 ISO 14229 标准，LDF 和 ARXML 在 EAS_Config 下，出一份符合性报告。",
+      "expected_output": "确认 node（LIN responder/UDS server、features、ldf_name）与 inputs（只列本产品的 ARXML）；static 读出支持的 SID 并给出 config 规则结论；applicable 过滤后列出适用条款；对 host-test 项搭建宿主机工程（probe/stubs），失败先排除环境原因；design 项写 reviews；report 生成 xlsx+md；verify 门禁通过；target 项列为转 SWE.6/HIL 不判符合；不复制标准原文。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "新增一个 ISO 21434 网络安全的标准包，PDF 放在 standards 目录了。",
+      "expected_output": "按 references/pack-authoring.md：新建 packs/<id>/pack.json；stdc.py extract 生成工作区候选（带 .gitignore，不进 skill）；按条款写自述检查项（适用性、方法、页码、verified）；config 类写 rules；跑版权自检与页码抽查；pack 版本号登记。",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "这个 CAN 节点的 CanTp 超时参数和 UDS 定时是否符合标准？",
+      "expected_output": "node.bus=CAN 时 LIN 项全部不适用；CANTP-TIM-01、UDS3-TIM-01 等 config 规则读取 ARXML CanTp/Dcm 参数给出带参数名与取值的证据；输入缺失判未检查而非不符合。",
+      "files": []
+    }
+  ]
+}

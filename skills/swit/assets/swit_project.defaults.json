@@ -1,0 +1,123 @@
+{
+  "_comment": "Defaults merged under every swit_project.json. Do not edit per project - override in the project file.",
+  "project": {
+    "name": "",
+    "software_name": "",
+    "software_version": "",
+    "author": "",
+    "tester": "",
+    "reviewer": "",
+    "approver": "",
+    "asil": "QM",
+    "case_id_prefix": "SWIT-",
+    "case_id_digits": 5
+  },
+  "workspace": "swit_ws",
+  "content_language": "en",
+  "sad": {
+    "path": "",
+    "profile": "aspice_sad",
+    "profile_overrides": {},
+    "extra_anchors": []
+  },
+  "templates": {
+    "dir": "",
+    "patterns": {
+      "strategy": "AU-QR-R&D-050*",
+      "guide": "AU-QW-R&D-56*",
+      "cases": "AU-QR-R&D-052*",
+      "record": "AU-QR-R&D-236*",
+      "regression": "AU-QR-R&D-237*",
+      "report": "AU-QR-R&D-238*",
+      "trace": "AU-QR-R&D-022*",
+      "integration_record": "AU-QR-R&D-235*"
+    }
+  },
+  "output": {
+    "dir": "",
+    "names": {
+      "strategy": "{project}-Software integration and integration testing strategies.docx",
+      "guide": "{project}-Software integration test Guide.docx",
+      "cases": "{project}-Software Integration Test Cases.xlsx",
+      "record": "{project}-Software Integration Test Records_{round}.xlsx",
+      "regression": "{project}-Software Integration Regression Test Records_{round}.xlsx",
+      "report": "{project}-Software Integration Test Report_{round}.xlsx",
+      "trace": "{project}-Trace the matrix-SWE.5.xlsx"
+    }
+  },
+  "scope": {
+    "_comment": "components: short names integrated with REAL code this round (empty = all components in the SAD). boundary: stubbed with CMock. exclusions: neither integrated nor stubbed (vendor MCAL/BSW/OS), with reason.",
+    "components": [],
+    "boundary_headers": [],
+    "exclusions": []
+  },
+  "sources": {
+    "_comment": "component_dirs: component short name -> source dir(s). include_dirs/defines: copy from the target build. glue_sources: RTE/glue .c files linked with every test.",
+    "root": "",
+    "component_dirs": {},
+    "include_dirs": [],
+    "defines": [],
+    "glue_sources": [],
+    "support_dir": ""
+  },
+  "cases": {
+    "per_consumer": false,
+    "per_transition": true,
+    "default_priority": {"interface": "Medium", "dynamic": "High", "resource": "Medium", "performance": "High"},
+    "high_priority_regex": "(?i)init|wdg|watchdog|safe|fault|reset|sleep|wake",
+    "performance_disposition": [
+      {"regex": "(?i)cpu load|负载|interrupts?$|中断|execution time|执行时间|response time|响应时间", "execution": "swe6"},
+      {"regex": "(?i)memory|内存|stack|栈|rom|ram|resource constraint|资源约束|memory size", "execution": "target-static"},
+      {"regex": ".*", "execution": "host"}
+    ],
+    "resource_disposition": [
+      {"regex": "(?i)memory|内存|resource constraint|资源约束|stack|栈", "execution": "target-static"},
+      {"regex": "(?i)shared resources? protection|共享资源保护", "execution": "host"},
+      {"regex": ".*", "execution": "review"}
+    ]
+  },
+  "toolchain": {
+    "gcc": "gcc",
+    "gcov": "gcov",
+    "ceedling": "ceedling",
+    "gcovr": "gcovr"
+  },
+  "target": {
+    "_comment": "Target build artefacts for the static resource checks (no board needed).",
+    "map_file": "",
+    "map_format": "gnu",
+    "su_dirs": [],
+    "rom_sections": [".text", ".rodata", ".init", ".fini", ".ARM.exidx", ".data_load"],
+    "ram_sections": [".data", ".bss", ".noinit", ".stack", ".heap"],
+    "budgets": {}
+  },
+  "kpi": {
+    "interface_coverage": 1.0,
+    "dynamic_coverage": 1.0,
+    "execution_rate": 1.0,
+    "pass_rate": 1.0,
+    "defect_closure_rate": 1.0,
+    "function_coverage": 1.0,
+    "call_coverage": 1.0
+  },
+  "swe6_transfer": {
+    "_comment": "Cases that need the dev board (execution time, CPU load, ISR latency) are transferred to SWE.6: verdict N/A, excluded from execution/pass-rate denominators, never Pass.",
+    "reference": "",
+    "reason_en": "Requires measurement on target hardware (execution time / CPU load / interrupt latency); verified in SWE.6 software qualification test.",
+    "reason_zh": "需在目标硬件上测量（执行时间/CPU负载/中断延迟），转软件合格性测试（SWE.6）验证。"
+  },
+  "environment_difference": "",
+  "regression": {
+    "always_include_priority": [],
+    "change_map": {}
+  },
+  "defects_file": "",
+  "vocab": {
+    "_comment": "Values written into dropdown columns. Read from the template's data validation when possible; these are fallbacks.",
+    "priority": {"High": "高High", "Medium": "中Medium", "Low": "低Low"},
+    "verdict": {"pass": "通过P", "fail": "失败F", "na": "用例不适用NA", "blocked": "阻塞B", "skipped": "跳过S"},
+    "method": {"interface": "接口测试 Interface test", "functional": "功能测试 Functional Test", "performance": "性能测试 Performance test"},
+    "reach": {"yes": "达成Reach", "no": "未达成Not Reach"},
+    "conclusion": {"pass": "Pass", "conditional": "Conditional Pass", "fail": "Not Pass"}
+  }
+}

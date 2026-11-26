@@ -1,0 +1,1105 @@
+{
+  "standard": "ISO 14229-1:2026 UDS 应用层",
+  "_note": "要点为自述概括，不是标准原文；页码为 PDF 页码。",
+  "items": [
+    {
+      "id": "UDS1-GEN-01",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "7.1",
+      "title": "请求-响应确认式通信",
+      "requirement": "每个物理寻址的服务请求都有一个或多个响应；只有功能寻址或请求明确要求不响应（抑制正响应位）时例外。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "对每个支持的 SID 发一个合法物理请求，断言都有响应（正或负）。",
+      "source": {
+        "page": 24,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-GEN-02",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "7.6",
+      "title": "否定响应格式",
+      "requirement": "否定响应为 0x7F + 原请求 SID + NRC 三字节。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "触发任一 NRC，检查响应首字节 7F、第 2 字节等于请求 SID。",
+      "source": {
+        "page": 26,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-GEN-03",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "7.3 / 7.4",
+      "title": "正响应 SID = 请求 SID + 0x40",
+      "requirement": "肯定响应的首字节为请求 SID 加 0x40。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "各支持服务的肯定响应首字节检查。",
+      "source": {
+        "page": 24,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-GEN-04",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "7.7.2 图5",
+      "title": "通用处理顺序：不支持的服务",
+      "requirement": "服务端收到不支持的 SID 时回 NRC 0x11（serviceNotSupported）；SID 支持但当前会话不支持时回 0x7F（serviceNotSupportedInActiveSession）。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "默认会话发送未配置 SID → 7F xx 11；发送仅扩展会话允许的 SID → 7F xx 7F。",
+      "source": {
+        "page": 28,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-GEN-05",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "7.7.3 图6/表3",
+      "title": "带子功能请求的处理顺序",
+      "requirement": "带子功能的请求按顺序判定：长度不足（<2 字节）回 0x13；子功能不支持回 0x12；子功能在当前会话不支持回 0x7E；之后才判定各服务的具体条件（如 0x22、0x24、0x31、0x33）。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "以 0x10/0x11/0x3E 为例：发 1 字节请求 → 13；子功能 0x55 → 12；仅编程会话允许的子功能在默认会话 → 7E。",
+      "source": {
+        "page": 29,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-GEN-06",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "7.7.3.2 表3",
+      "title": "物理寻址下抑制正响应位",
+      "requirement": "物理寻址且抑制正响应位=1 时，成功处理不发响应；但任何否定响应（含 0x11/0x12/0x31/0x7E/0x7F）仍要发送。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "3E 80 物理寻址 → 无响应；10 83（若扩展会话条件不满足）→ 仍回 7F 10 22；发送 11 81 子功能不支持的值 → 回 7F。",
+      "source": {
+        "page": 30,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-GEN-07",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "7.7.3.3 表4 / 7.7.5",
+      "title": "功能寻址下不回部分 NRC",
+      "requirement": "功能寻址请求导致的 NRC 0x11、0x7F、0x12、0x7E、0x31 一律不发送（尚未发 0x78 的前提下）；其他 NRC 照常发送。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag",
+          "functional-addressing"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "功能寻址发送不支持的 SID / 子功能 / 超范围 DID，断言无响应。LIN 上还受 UDS7-NAD-02、LIN2-TP-17 约束。",
+      "source": {
+        "page": 31,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-GEN-08",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "7.7.3.2",
+      "title": "0x78 之后必须有最终响应",
+      "requirement": "一旦发送 NRC 0x78（responsePending），无论抑制正响应位如何，都必须给出最终响应。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "回调返回 PENDING 的服务 + 抑制正响应位=1，断言最终仍发送肯定响应。",
+      "source": {
+        "page": 30,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-GEN-09",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "8.2.2 表10",
+      "title": "两种抑制位取值都要支持",
+      "requirement": "带子功能的服务，对每个支持的子功能值都必须同时支持抑制正响应位 0 和 1，且两种情况下服务执行结果一致。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "对 0x10/0x11/0x3E/0x85/0x28 的每个支持子功能分别用 bit7=0/1 请求，执行效果一致，只差是否回正响应。",
+      "source": {
+        "page": 38,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-GEN-10",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "8.3.1",
+      "title": "正响应在执行后发送",
+      "requirement": "需要正响应时，在服务执行完成后发送（个别服务另有规定的除外，如复位、会话切换）。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ]
+      },
+      "method": "design",
+      "check_hint": "评审各回调：只有执行成功后才返回 OK；长操作用 PENDING。",
+      "source": {
+        "page": 39,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-GEN-11",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "A.1",
+      "title": "0x7E 的使用条件",
+      "requirement": "NRC 0x7E 仅在子功能在其他会话中受支持时使用，否则用 0x12。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "子功能在任何会话都不支持 → 12；只在其他会话支持 → 7E。",
+      "source": {
+        "page": 378,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-GEN-12",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "7.7.2 图5",
+      "title": "忙时拒绝",
+      "requirement": "服务端因处理其他客户端的请求而无法接受新请求时，回 NRC 0x21（busyRepeatRequest）或按协议规定处理，不得静默丢弃物理请求。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ]
+      },
+      "method": "design",
+      "check_hint": "单一客户端的 LIN 从节点通常不涉及；多客户端（CAN 网关后）时评审。",
+      "source": {
+        "page": 28,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-DSC-01",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.2.1",
+      "title": "始终只有一个会话",
+      "requirement": "服务端任意时刻只有一个激活的诊断会话；上电后为默认会话。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x10"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "初始化后读取会话为默认；切换后旧会话失效。",
+      "source": {
+        "page": 42,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-DSC-02",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.2.1",
+      "title": "请求当前已激活的会话",
+      "requirement": "请求当前已在运行的会话时，回肯定响应。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x10"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "默认会话下发送 10 01 → 50 01 …。",
+      "source": {
+        "page": 42,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-DSC-03",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.2.1",
+      "title": "会话切换失败保持原会话",
+      "requirement": "无法进入请求的会话时回否定响应（如 0x22），并继续保持当前会话。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x10"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "制造条件不满足（如车速/电压条件）时请求扩展/编程会话 → 7F 10 22，会话不变。",
+      "source": {
+        "page": 43,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-DSC-04",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.2.1",
+      "title": "回到默认会话时复位状态",
+      "requirement": "从非默认会话回到默认会话时：重新锁定安全访问；终止仅在非默认会话有效的功能；复位 CommunicationControl、ControlDTCSetting 等在该会话中改变的设置。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x10"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "扩展会话中解锁安全访问、执行 28 01 01 与 85 02 → 发送 10 01 → 断言安全重新锁定、通信与 DTC 记录恢复。",
+      "source": {
+        "page": 43,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-DSC-05",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.2.3 表28",
+      "title": "正响应携带 P2/P2* 参数",
+      "requirement": "DSC 肯定响应携带 P2Server_max（1 ms 分辨率）与 P2*Server_max（10 ms 分辨率），取值与实际定时一致。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x10"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "解析 50 0x 响应的 4 字节会话参数，与 ARXML DcmDspSessionP2ServerMax / P2StarServerMax 比较（注意 P2* 按 10 ms 编码）。",
+      "source": {
+        "page": 48,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-DSC-06",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.2.4 表29",
+      "title": "DSC 的 NRC",
+      "requirement": "DSC 至少支持 NRC 0x12（子功能不支持）、0x13（长度错误）、0x22（条件不满足）。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x10"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "10 55 → 12；10 01 00 → 13；条件不满足 → 22。",
+      "source": {
+        "page": 48,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-ER-01",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.3",
+      "title": "ECUReset 的响应与执行",
+      "requirement": "支持的复位类型先发肯定响应（未抑制时）再执行复位；不支持的子功能回 0x12，长度错误回 0x13，条件不满足回 0x22，需要安全访问而未解锁回 0x33。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x11"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "11 01 → 51 01 后触发复位请求（桩记录 Mcu_PerformReset 调用）；11 55 → 12。",
+      "source": {
+        "page": 49,
+        "verified": false,
+        "by": "claude",
+        "date": "2026-11-26",
+        "note": "要点依据对标准的理解整理，尚未逐字对照该页原文，待人工核对"
+      }
+    },
+    {
+      "id": "UDS1-SA-01",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.4.1",
+      "title": "seed/key 子功能奇偶规则",
+      "requirement": "requestSeed 子功能为奇数，同一等级的 sendKey 为 requestSeed+1。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x27"
+        ]
+      },
+      "method": "config",
+      "check_hint": "ARXML Dcm 安全等级配置（DcmDspSecurityLevel 等）对应的 seed/key 子功能符合奇偶规则。",
+      "source": {
+        "page": 53,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-SA-02",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.4.1",
+      "title": "已解锁时请求种子返回全零",
+      "requirement": "所请求的安全等级已解锁时，requestSeed 的肯定响应中种子为全 0。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x27"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "解锁等级 1 后再发 27 01，断言种子字节全为 00。",
+      "source": {
+        "page": 53,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-SA-03",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.4.1",
+      "title": "密钥错误需重新请求种子",
+      "requirement": "密钥不匹配算一次错误尝试；之后必须重新从 requestSeed 开始。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x27"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "27 01 → 错误 key 27 02 → 7F 27 35；再直接发 27 02 → 7F 27 24（顺序错误）。",
+      "source": {
+        "page": 53,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-SA-04",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.4.4 表45",
+      "title": "SecurityAccess 的 NRC",
+      "requirement": "支持 0x12、0x13、0x22、0x24（顺序错误）、0x31、0x35（密钥无效）、0x36（超过尝试次数，同时启动延时）、0x37（延时未到）。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x27"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "依次触发：未请求种子先发 key → 24；错误 key → 35；连续错误达到次数 → 36；延时内请求种子 → 37。",
+      "source": {
+        "page": 57,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-SA-05",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.4.1",
+      "title": "错误尝试延时与上电延时",
+      "requirement": "支持延时定时器时：错误尝试达到 OEM 规定次数后激活延时；上电/复位时，若此前的安全访问因一次错误尝试而失败（且之后没有成功解锁），也要激活延时；成功 sendKey 后清除该标记；无法判断时上电后一律激活。延时期间 requestSeed 回 0x37。是否支持延时定时器由 OEM 决定。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x27"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "达到错误次数后按节拍推进，延时结束前 27 01 → 37，结束后可正常请求种子；按需求检查失败计数是否掉电保存。",
+      "source": {
+        "page": 53,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-SA-06",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.4.1",
+      "title": "安全访问不影响正常通信",
+      "requirement": "安全访问尝试（含失败与延时）不得妨碍正常车辆通信和其他诊断通信。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x27"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "延时激活期间发送 0x22 读 DID 与正常信号帧，断言均正常。",
+      "source": {
+        "page": 53,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-SA-07",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.4.1",
+      "title": "锁定时拒绝受保护服务",
+      "requirement": "服务端处于锁定状态时，请求受保护的服务回 NRC 0x33（securityAccessDenied）。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x27"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "未解锁时写受保护 DID（2E）或执行受保护例程 → 7F 2E 33。",
+      "source": {
+        "page": 53,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-SA-08",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "附录 I 注 e/g",
+      "title": "解锁等级在请求其他等级种子时保持",
+      "requirement": "某安全等级解锁后，即使收到其他等级的种子请求也保持解锁，直到另一等级完全解锁或退出该会话。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x27"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "解锁等级 1 后请求等级 3 的种子但不发 key，断言等级 1 的受保护服务仍可用。",
+      "source": {
+        "page": 427,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-CC-01",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.5.1",
+      "title": "重复设置同一状态仍回正响应",
+      "requirement": "请求的通信控制状态已生效时，仍发送肯定响应。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x28"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "连续两次 28 01 01 → 两次均 68 01。",
+      "source": {
+        "page": 59,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-CC-02",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.5.4",
+      "title": "CommunicationControl 的 NRC",
+      "requirement": "支持 0x12、0x13、0x22、0x31（通信类型不支持）。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x28"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "28 55 01 → 12；28 01 → 13；28 01 0F（未支持类型）→ 31。",
+      "source": {
+        "page": 61,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-CC-03",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.5.2.2 表53",
+      "title": "controlType 实际生效",
+      "requirement": "肯定应答后，所请求的控制类型必须真正作用于指定的通信类型：如 0x03 disableRxAndTx 使普通应用报文停止收发，0x00 enableRxAndTx 恢复；不能只回肯定应答而不改变通信。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x28"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "28 55 01 → 12；28 01 → 13；28 01 0F（未支持类型）→ 31。",
+      "source": {
+        "page": 60,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-TP-01",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.7",
+      "title": "TesterPresent 保持会话",
+      "requirement": "TesterPresent（子功能 0x00，常以 0x80 抑制正响应）用于保持非默认会话；不支持的子功能回 0x12，长度错误回 0x13。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x3E"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "3E 00 → 7E 00；3E 80 → 无响应；3E 01 → 7F 3E 12；会话保持见 UDS2-SES-04。",
+      "source": {
+        "page": 108,
+        "verified": false,
+        "by": "claude",
+        "date": "2026-11-26",
+        "note": "要点依据对标准的理解整理，尚未逐字对照该页原文，待人工核对"
+      }
+    },
+    {
+      "id": "UDS1-CDS-01",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "9.8.1",
+      "title": "ControlDTCSetting 停止/恢复 DTC 更新",
+      "requirement": "子功能 off 时停止更新 DTC 状态位，on 或回到不支持该服务的会话（如默认会话）时恢复更新。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x85"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "85 02 后注入故障 → DTC 状态不变；85 01 或 10 01 后 → 恢复记录。",
+      "source": {
+        "page": 111,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-RDBI-01",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "10.2.1",
+      "title": "RDBI 单一响应返回全部 DID",
+      "requirement": "收到 ReadDataByIdentifier 后，在一个肯定响应中依次返回所请求的每个 DID 及其数据。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x22"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "一次请求两个 DID（若允许多 DID），断言响应为 62 DID1 data1 DID2 data2。",
+      "source": {
+        "page": 152,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-RDBI-02",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "10.2.4 表190",
+      "title": "RDBI 的 NRC",
+      "requirement": "支持 0x13（长度错误或 DID 数量超限）、0x14（响应过长）、0x22（条件不满足）、0x31（DID 不支持）、0x33（DID 受保护而未解锁），按图 21 的顺序判定。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x22"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "22 F1 → 13；22 12 34（未配置 DID）→ 31；受保护 DID 未解锁 → 33。",
+      "source": {
+        "page": 154,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-WDBI-01",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "10.7",
+      "title": "WDBI 的行为与 NRC",
+      "requirement": "写 DID 成功后肯定响应只回显 DID；不支持 0x2C 动态 DID；支持 0x13、0x22、0x31、0x33、0x72（写入失败）。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x2E"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "2E F1 90 + 正确长度数据（解锁后）→ 6E F1 90；长度错误 → 13；只读 DID → 31；未解锁 → 33；NvM 写失败 → 72。",
+      "source": {
+        "page": 206,
+        "verified": false,
+        "by": "claude",
+        "date": "2026-11-26",
+        "note": "要点依据对标准的理解整理，尚未逐字对照该页原文，待人工核对"
+      }
+    },
+    {
+      "id": "UDS1-CDI-01",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "11.2.1",
+      "title": "ClearDiagnosticInformation",
+      "requirement": "清除指定组的 DTC 信息，处理完成后才回肯定响应；DTC 状态位按附录 D 的定义变化。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x14"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "14 FF FF FF → 54；随后 19 02 读取为空，状态位按附录 D。",
+      "source": {
+        "page": 217,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-RDTC-01",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "11.3",
+      "title": "ReadDTCInformation 子功能与状态位",
+      "requirement": "支持的 0x19 子功能（如 01/02/04/06/0A）响应格式与 DTC 状态位定义符合标准。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x19"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "按 OEM 诊断问卷支持的子功能逐个验证格式。",
+      "source": {
+        "page": 220,
+        "verified": false,
+        "by": "claude",
+        "date": "2026-11-26",
+        "note": "要点依据对标准的理解整理，尚未逐字对照该页原文，待人工核对"
+      }
+    },
+    {
+      "id": "UDS1-RC-01",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "13",
+      "title": "RoutineControl 的行为与 NRC",
+      "requirement": "启动/停止/请求结果三种子功能按例程定义执行；顺序错误（如未启动就请求结果）回 0x24；例程不支持回 0x31；未解锁回 0x33；执行失败回 0x72。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag"
+        ],
+        "sid": [
+          "0x31"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "31 01 <RID> → 71 01 <RID>；未启动时 31 03 <RID> → 24；未配置 RID → 31。",
+      "source": {
+        "page": 297,
+        "verified": false,
+        "by": "claude",
+        "date": "2026-11-26",
+        "note": "要点依据对标准的理解整理，尚未逐字对照该页原文，待人工核对"
+      }
+    },
+    {
+      "id": "UDS1-DL-01",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "14.2 / 14.4 / 14.5",
+      "title": "下载序列",
+      "requirement": "下载按 RequestDownload → TransferData（块序号从 1 递增并回绕）→ RequestTransferExit 进行；顺序错误回 0x24，块序号错误回 0x73，数据长度超出协商的块长度回 0x13 或 0x31/0x71（按服务表）。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "diag",
+          "reprogramming"
+        ],
+        "sid": [
+          "0x34"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "一般由 Bootloader 实现；APP 不支持 0x34 时本项不适用。",
+      "source": {
+        "page": 307,
+        "verified": false,
+        "by": "claude",
+        "date": "2026-11-26",
+        "note": "要点依据对标准的理解整理，尚未逐字对照该页原文，待人工核对"
+      }
+    },
+    {
+      "id": "UDS1-PRG-01",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "16.4.1.2.1",
+      "title": "Boot 分区与防误擦除",
+      "requirement": "支持应用软件编程的服务端必须有 Boot 软件分区，且受保护，编程失败不影响再次编程的能力。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "reprogramming"
+        ]
+      },
+      "method": "design",
+      "check_hint": "评审 Bootloader/Flash 分区、APP 有效性标志与校验和（如 APP 区末尾校验和）、跳转逻辑。",
+      "source": {
+        "page": 363,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-PRG-02",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "16.3.1.2",
+      "title": "编程过程受安全访问保护",
+      "requirement": "编程事件应受安全访问保护（排放与安全相关系统强制）。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "reprogramming"
+        ]
+      },
+      "method": "design",
+      "check_hint": "进入编程会话及下载服务前需解锁；对照 OEM 刷写规范。",
+      "source": {
+        "page": 357,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "UDS1-PRG-03",
+      "standard": "ISO 14229-1",
+      "standard_key": "ISO14229-1",
+      "clause": "16.4.2.1",
+      "title": "软件标识与指纹",
+      "requirement": "每个下载模块包含 Boot/应用软件标识；使用指纹时通过规定的 DID 写入 Boot/应用软件指纹。",
+      "applicability": {
+        "role": [
+          "server"
+        ],
+        "features": [
+          "reprogramming"
+        ]
+      },
+      "method": "design",
+      "check_hint": "DID F180~F199 等标识与指纹 DID 的实现与 OEM 规范一致。",
+      "source": {
+        "page": 366,
+        "verified": false,
+        "by": "claude",
+        "date": "2026-11-26",
+        "note": "要点依据对标准的理解整理，尚未逐字对照该页原文，待人工核对"
+      }
+    }
+  ],
+  "_scope": "收录服务端通用规则（第 7、8 章）与常用服务；各服务条款以 sid 标注，只对支持该服务的节点适用。认证（0x29）、ROE（0x86）、LinkControl（0x87）、周期读（0x2A）、动态 DID（0x2C）、文件传输（0x38）、安全数据传输（0x84）未收录，产品支持时再补。"
+}

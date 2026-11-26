@@ -1,0 +1,172 @@
+{
+ "standard": "ISO 14229-3:2022 UDS on CAN",
+ "_note": "要点为自述概括，不是标准原文；页码为 PDF 页码。",
+ "items": [
+  {
+   "id": "UDS3-SVC-01",
+   "standard": "ISO 14229-3",
+   "standard_key": "ISO14229-3",
+   "clause": "8.3 表2 REQ7.3/7.4",
+   "title": "UDSonCAN 服务实现",
+   "requirement": "表 2 中无特殊要求的服务按 ISO 14229-1/-2 实现；标有 UDSonCAN 特殊要求的服务（如 ReadDataByPeriodicIdentifier）按本标准相应条款实现。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "role": [
+     "server"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "design",
+   "source": {
+    "page": 13,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "UDS3-TIM-01",
+   "standard": "ISO 14229-3",
+   "standard_key": "ISO14229-3",
+   "clause": "8.6.1 REQ7.15",
+   "title": "定时参数按 14229-2 映射到 CAN",
+   "requirement": "请求/响应定时按 ISO 14229-2 实现，取 CAN 上的 P2/P2* 值。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "role": [
+     "server"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "config",
+   "params": {
+    "P2Server_max_ms": 50,
+    "P2StarServer_max_ms": 5000
+   },
+   "check_hint": "ARXML Dcm DcmDspSessionP2ServerMax / P2StarServerMax 与 OEM 规定一致（UDSonCAN 常用 50 ms / 5000 ms）。",
+   "source": {
+    "page": 21,
+    "verified": false,
+    "by": "claude",
+    "date": "2026-11-26",
+    "note": "要点依据对标准的理解整理，尚未逐字对照该页原文，待人工核对"
+   }
+  },
+  {
+   "id": "UDS3-TIM-02",
+   "standard": "ISO 14229-3",
+   "standard_key": "ISO14229-3",
+   "clause": "8.6.2 REQ7.16",
+   "title": "主动发送的响应不复位 S3",
+   "requirement": "服务端主动发送的响应（如周期响应）不重置 S3Server 定时器。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "role": [
+     "server"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "host-test",
+   "source": {
+    "page": 21,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "UDS3-PER-01",
+   "standard": "ISO 14229-3",
+   "standard_key": "ISO14229-3",
+   "clause": "8.5.1 REQ7.5~7.7",
+   "title": "周期读响应（UUDT）",
+   "requirement": "ReadDataByPeriodicIdentifier 的周期响应用单帧 UUDT 报文、单独的 CAN ID 发送，绕过会话/传输/网络层；长度受单帧限制。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "role": [
+     "server"
+    ],
+    "features": [
+     "diag"
+    ],
+    "sid": [
+     "0x2A"
+    ]
+   },
+   "method": "host-test",
+   "source": {
+    "page": 14,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "UDS3-ADR-01",
+   "standard": "ISO 14229-3",
+   "standard_key": "ISO14229-3",
+   "clause": "12.6 REQ3.5",
+   "title": "响应与请求寻址类型对应",
+   "requirement": "服务端以与请求对应的目标地址类型响应（物理请求回物理响应）。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "role": [
+     "server"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "host-test",
+   "source": {
+    "page": 24,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "UDS3-TP-01",
+   "standard": "ISO 14229-3",
+   "standard_key": "ISO14229-3",
+   "clause": "11.3 REQ4.3",
+   "title": "传输协议按 15765-2",
+   "requirement": "UDSonCAN 的传输协议按 ISO 15765-2 实现（由 CANTP 检查项覆盖）。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "role": [
+     "server"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "design",
+   "source": {
+    "page": 22,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  }
+ ],
+ "_scope": "CAN 节点适用。"
+}

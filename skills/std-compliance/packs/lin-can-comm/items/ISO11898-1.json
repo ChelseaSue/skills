@@ -1,0 +1,181 @@
+{
+ "standard": "ISO 11898-1:2024 CAN 数据链路层",
+ "_note": "要点为自述概括，不是标准原文；页码为 PDF 页码。",
+ "items": [
+  {
+   "id": "CAN1-FMT-01",
+   "standard": "ISO 11898-1",
+   "standard_key": "ISO11898-1",
+   "clause": "6.6.10/6.6.11",
+   "title": "帧格式与标识符",
+   "requirement": "节点使用的帧格式（经典/FD，标准 11 位或扩展 29 位标识符）与通信矩阵一致；CAN FD 帧长只取规定的 DLC 对应值。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ]
+   },
+   "method": "config",
+   "check_hint": "DBC/ARXML CanIf/Can 的 ID 类型、DLC、FD 标志与通信矩阵一致。",
+   "source": {
+    "page": 37,
+    "verified": false,
+    "by": "claude",
+    "date": "2026-11-26",
+    "note": "要点依据对标准的理解整理，尚未逐字对照该页原文，待人工核对"
+   }
+  },
+  {
+   "id": "CAN1-BIT-01",
+   "standard": "ISO 11898-1",
+   "standard_key": "ISO11898-1",
+   "clause": "7.3.2/7.3.3",
+   "title": "位时序配置",
+   "requirement": "位时间分段（同步段、传播段、相位段、SJW）与采样点配置满足网络要求，数据段与仲裁段分别配置（CAN FD）。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ]
+   },
+   "method": "config",
+   "check_hint": "MCAL Can 控制器波特率/采样点/SJW 与 OEM 物理层规范一致。",
+   "source": {
+    "page": 57,
+    "verified": false,
+    "by": "claude",
+    "date": "2026-11-26",
+    "note": "要点依据对标准的理解整理，尚未逐字对照该页原文，待人工核对"
+   }
+  },
+  {
+   "id": "CAN1-TDC-01",
+   "standard": "ISO 11898-1",
+   "standard_key": "ISO11898-1",
+   "clause": "7.3.4",
+   "title": "发送延迟补偿（CAN FD）",
+   "requirement": "使用 CAN FD 高速数据段时启用并正确配置发送延迟补偿。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ],
+    "features": [
+     "can-fd"
+    ]
+   },
+   "method": "config",
+   "source": {
+    "page": 62,
+    "verified": false,
+    "by": "claude",
+    "date": "2026-11-26",
+    "note": "要点依据对标准的理解整理，尚未逐字对照该页原文，待人工核对"
+   }
+  },
+  {
+   "id": "CAN1-FLT-01",
+   "standard": "ISO 11898-1",
+   "standard_key": "ISO11898-1",
+   "clause": "6.5.4",
+   "title": "接收过滤",
+   "requirement": "接收过滤（硬件过滤器/邮箱）只放行本节点需要的报文，诊断请求 ID 必须可接收。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ]
+   },
+   "method": "config",
+   "source": {
+    "page": 28,
+    "verified": false,
+    "by": "claude",
+    "date": "2026-11-26",
+    "note": "要点依据对标准的理解整理，尚未逐字对照该页原文，待人工核对"
+   }
+  },
+  {
+   "id": "CAN1-EC-01",
+   "standard": "ISO 11898-1",
+   "standard_key": "ISO11898-1",
+   "clause": "8.1.4",
+   "title": "错误界定状态转换",
+   "requirement": "按规则维护发送/接收错误计数，正确进入错误主动、错误被动与 bus-off 状态。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ]
+   },
+   "method": "target",
+   "target_note": "错误计数由 CAN 控制器硬件实现，需在总线上注入错误帧验证。",
+   "source": {
+    "page": 75,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "CAN1-BO-01",
+   "standard": "ISO 11898-1",
+   "standard_key": "ISO11898-1",
+   "clause": "8.1.4 / 5.12",
+   "title": "bus-off 恢复",
+   "requirement": "进入 bus-off 后，按标准在检测到规定次数的 11 个连续隐性位后才可恢复；软件的 bus-off 恢复策略（快恢复/慢恢复次数与间隔）与 OEM 规范一致。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "CanSM/Can 驱动 bus-off 回调触发后，按节拍验证恢复尝试次数与间隔；硬件恢复条件部分转目标机。",
+   "source": {
+    "page": 75,
+    "verified": false,
+    "by": "claude",
+    "date": "2026-11-26",
+    "note": "要点依据对标准的理解整理，尚未逐字对照该页原文，待人工核对"
+   }
+  },
+  {
+   "id": "CAN1-ACK-01",
+   "standard": "ISO 11898-1",
+   "standard_key": "ISO11898-1",
+   "clause": "6.6.14 / 5.13",
+   "title": "应答与重发",
+   "requirement": "发送的数据帧在未获应答或出错时由控制器自动重发；软件不得关闭自动重发（除非 OEM 明确要求单次发送模式）。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ]
+   },
+   "method": "config",
+   "source": {
+    "page": 49,
+    "verified": false,
+    "by": "claude",
+    "date": "2026-11-26",
+    "note": "要点依据对标准的理解整理，尚未逐字对照该页原文，待人工核对"
+   }
+  },
+  {
+   "id": "CAN1-PHY-01",
+   "standard": "ISO 11898-1",
+   "standard_key": "ISO11898-1",
+   "clause": "7.3.5/7.3.6",
+   "title": "同步与振荡器容差",
+   "requirement": "节点的硬同步/重同步与振荡器容差满足标准要求。",
+   "applicability": {
+    "bus": [
+     "CAN"
+    ]
+   },
+   "method": "target",
+   "target_note": "物理层与时钟精度，在目标机/一致性测试中验证。",
+   "source": {
+    "page": 64,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  }
+ ],
+ "_scope": "大部分要求由 CAN 控制器硬件实现；只收录软件配置可影响的部分，其余为 target。"
+}

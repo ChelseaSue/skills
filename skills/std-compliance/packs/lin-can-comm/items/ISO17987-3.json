@@ -1,0 +1,953 @@
+{
+  "standard": "ISO 17987-3:2025 LIN 协议规范",
+  "_note": "要点为自述概括，不是标准原文；页码为 PDF 页码。",
+  "items": [
+    {
+      "id": "LIN3-SIG-01",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.1.2",
+      "title": "每个信号只有一个发布者",
+      "requirement": "LIN 簇内每个信号只能由一个固定节点发布。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ]
+      },
+      "method": "config",
+      "check_hint": "LDF Signals：每个信号的 publisher 唯一，且与发布该信号的帧的 publisher 一致。",
+      "source": {
+        "page": 15,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-SIG-02",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.1.2",
+      "title": "信号有初始值",
+      "requirement": "所有信号都必须定义初始值；本节点发布的信号在应用首次写入前以初始值发送。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ]
+      },
+      "method": "config",
+      "check_hint": "LDF Signals 每个信号都有 init 值；本节点发布的信号在 Com 配置中有对应初始值。",
+      "source": {
+        "page": 15,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-SIG-03",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.1.3",
+      "title": "信号读写原子性",
+      "requirement": "应用读写标量信号或字节数组时不得读到部分更新的值（读写为原子操作）。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ]
+      },
+      "method": "design",
+      "check_hint": "评审 Com/RTE 信号访问：中断上下文更新 PDU 缓冲时有临界区或双缓冲保护。",
+      "source": {
+        "page": 15,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-SIG-04",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.1.4",
+      "title": "未用位为隐性 1",
+      "requirement": "帧中未定义/未使用的位发送为隐性（1）。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "响应本节点发布帧的报头，检查发出数据中未映射信号的位全为 1。",
+      "source": {
+        "page": 15,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-FRM-01",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.2.2.5.2 / 5.2.4.6",
+      "title": "帧 ID 分类与保留帧",
+      "requirement": "信号帧使用 ID 0~59；0x3C/0x3D 只用作诊断帧；保留帧 0x3E/0x3F 不得在簇中使用。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ]
+      },
+      "method": "config",
+      "check_hint": "LDF Frames 的 id 均在 0~59；Diagnostic_frames 为 0x3C/0x3D；无 0x3E/0x3F。",
+      "source": {
+        "page": 19,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-PID-01",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.2.2.5.3",
+      "title": "PID 奇偶校验",
+      "requirement": "受保护标识符由 6 位 ID 加两位奇偶校验位组成，接收方按规定公式校验，校验错误的报头不响应。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "注入奇偶位错误的 PID（如 0x2C 对应的错误 PID），断言本节点不发送响应、不更新接收数据。",
+      "source": {
+        "page": 19,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-CKS-01",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.2.2.7",
+      "title": "诊断帧使用经典校验和",
+      "requirement": "ID 0x3C、0x3D 的诊断帧始终使用经典校验和（不含 PID）。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ]
+      },
+      "method": "config",
+      "check_hint": "ARXML LinIf 帧配置中诊断帧的校验和类型为 CLASSIC。",
+      "source": {
+        "page": 21,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-CKS-02",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.2.2.7",
+      "title": "信号帧校验和类型一致",
+      "requirement": "信号帧的校验和类型（LIN 2.x 节点为增强型，含 PID）在发布方与所有订阅方之间一致，并与 LDF 声明的协议版本相符。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ]
+      },
+      "method": "config",
+      "check_hint": "LDF 协议版本 ≥2.0 时，ARXML LinIf 中非诊断帧的校验和类型为 ENHANCED。",
+      "source": {
+        "page": 21,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-CKS-03",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.2.4.2",
+      "title": "校验和错误的帧不交给应用",
+      "requirement": "订阅的帧只有在未检测到错误（含校验和错误）时才交给应用；出错的帧丢弃。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "注入 0x0C 帧但校验和错误，断言 Com 信号值不变、产生 LIN 错误通知；再注入正确帧，信号更新。",
+      "source": {
+        "page": 22,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-DIAG-01",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.2.4.5",
+      "title": "诊断帧固定 8 字节",
+      "requirement": "诊断帧（0x3C/0x3D）承载传输层数据，长度固定为 8 字节。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ]
+      },
+      "method": "config",
+      "check_hint": "LDF Diagnostic_frames 与 ARXML LinIf 诊断帧长度为 8。",
+      "source": {
+        "page": 26,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-DIAG-02",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.2.4.5",
+      "title": "无数据时不回应答帧",
+      "requirement": "响应方对 0x3D 报头仅在有待发送的诊断数据时才回应答；无数据时保持静默。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "无诊断会话时注入 0x3D 报头，断言本节点不发送响应；有待发响应时才发送。",
+      "source": {
+        "page": 26,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-UNC-01",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.2.4.2",
+      "title": "无条件帧始终响应",
+      "requirement": "本节点发布的无条件帧，在每次收到对应报头时都必须发送响应。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "连续注入本节点发布帧的报头（如 0x2C）N 次，断言 N 次均有响应。",
+      "source": {
+        "page": 22,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-UNC-02",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.2.4.2",
+      "title": "订阅帧交给应用",
+      "requirement": "本节点订阅的无条件帧在无错误时接收并把数据交给应用。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "注入 0x0C、0x1C 正确帧，断言对应 Com 信号更新、RTE/回调收到新值。",
+      "source": {
+        "page": 22,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-ETF-01",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.2.4.3",
+      "title": "事件触发帧：仅信号更新时响应",
+      "requirement": "事件触发帧关联的无条件帧，发布方只在其中至少一个信号更新后才响应；冲突后在下一次该 PID 出现时重试直到成功。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ],
+        "features": [
+          "event-frame"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "仅当本节点发布事件触发帧时适用。",
+      "source": {
+        "page": 23,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-ETF-02",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.2.4.3.2",
+      "title": "事件触发帧关联帧约束",
+      "requirement": "同一事件触发帧关联的无条件帧长度相同、校验和类型相同，首字节保留给 PID，且由不同响应方发布。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "features": [
+          "event-frame"
+        ]
+      },
+      "method": "config",
+      "check_hint": "LDF Event_triggered_frames 关联帧的长度/校验和/发布者。",
+      "source": {
+        "page": 23,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-SPO-01",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.2.4.4",
+      "title": "零星帧（主节点）",
+      "requirement": "零星帧由主节点按信号更新与优先级发送，未发送的候选帧不得丢失。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "commander"
+        ],
+        "features": [
+          "sporadic-frame"
+        ]
+      },
+      "method": "design",
+      "source": {
+        "page": 25,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-SCH-01",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.3",
+      "title": "调度表处理（主节点）",
+      "requirement": "主节点按调度表发送报头，帧槽长度覆盖抖动与最大帧时长，切换调度表不打断进行中的传输。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "commander"
+        ]
+      },
+      "method": "design",
+      "source": {
+        "page": 27,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-SCH-02",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.3.3",
+      "title": "调度表帧槽长度足够",
+      "requirement": "调度表每个帧槽的延时不小于对应帧的最大传输时间（含抖动），否则响应来不及发送。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ]
+      },
+      "method": "config",
+      "check_hint": "LDF Schedule_tables 每个条目 delay ≥ 该帧最大帧时长（按 LIN_speed、数据长度计算）+ 主节点抖动。",
+      "source": {
+        "page": 27,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-BRK-01",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.2.2.3",
+      "title": "间隔场检测门限",
+      "requirement": "响应方以 11 个本地位时间作为间隔场检测门限，能检测至少 9/16 位长的间隔定界符，且不检查定界符最短长度。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ]
+      },
+      "method": "target",
+      "target_note": "取决于 LIN 控制器/驱动的位级行为，需在目标机用 LIN 一致性测试设备验证。",
+      "source": {
+        "page": 18,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-BRK-02",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.2.2.4",
+      "title": "新间隔场中止当前传输",
+      "requirement": "检测到新的间隔场/同步场时，中止正在进行的传输并开始处理新帧。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ]
+      },
+      "method": "target",
+      "target_note": "需在总线上注入中途打断的报头，目标机/HIL 验证。",
+      "source": {
+        "page": 18,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-SYN-01",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.4.3.2",
+      "title": "同步与位速率容差",
+      "requirement": "响应方在 PID 场开始时完成同步，并在整帧内保持在规定的位速率容差内。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ]
+      },
+      "method": "target",
+      "target_note": "时钟同步与容差属于物理/位时序，按 ISO 17987-4/-6 在目标机验证。",
+      "source": {
+        "page": 29,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-RBK-01",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.4.3.3",
+      "title": "回读不一致检测",
+      "requirement": "发送时回读总线，发现数据或起止位不一致时最迟在下一个字节边界中止发送。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ]
+      },
+      "method": "target",
+      "target_note": "依赖 LIN 控制器回读机制，需在目标机注入位错误验证。",
+      "source": {
+        "page": 30,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-LEN-01",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.2.3",
+      "title": "零开销帧可接收",
+      "requirement": "订阅节点能接收字节间无额外间隔（零开销）的帧。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ]
+      },
+      "method": "target",
+      "target_note": "帧内字节间隔属于实时时序，需目标机/一致性测试验证。",
+      "source": {
+        "page": 22,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-STA-01",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.5.4",
+      "title": "发布 response_error 信号",
+      "requirement": "每个响应方在其发送的某个无条件帧中发布 1 位 response_error 信号（若该帧关联事件触发帧，还应作为无条件帧调度）。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ]
+      },
+      "method": "config",
+      "check_hint": "LDF Node_attributes 中本节点的 response_error 指向一个由本节点发布的 1 位信号，且该信号映射在本节点发布的无条件帧中。",
+      "source": {
+        "page": 31,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-STA-02",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.5.4",
+      "title": "response_error 置位条件",
+      "requirement": "本节点收发的帧响应中出现错误（校验和、帧格式、位错误等，事件触发帧响应除外）时置位 response_error；没有收到响应（无数据无校验和）时不置位。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "注入校验和错误的订阅帧 → 下一次本节点发布帧中 response_error=1；只发报头不发响应 → 不置位。",
+      "source": {
+        "page": 31,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-STA-03",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "5.5.4",
+      "title": "response_error 清除条件",
+      "requirement": "包含 response_error 的无条件帧发送成功后清除该信号；进入休眠时清除挂起的 response_error。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "置位后发送一次承载帧 → 再次发送时为 0；置位后进入休眠再唤醒 → 为 0。",
+      "source": {
+        "page": 31,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-ID-01",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "6.2.1",
+      "title": "LIN 产品标识",
+      "requirement": "每个响应方具备 LIN 产品标识（供应商 ID、功能 ID、变体 ID），且不使用通配值。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ]
+      },
+      "method": "config",
+      "check_hint": "LDF Node_attributes.product_id：供应商 ID ≠ 0x7FFF、功能 ID ≠ 0xFFFF；与产品实际标识一致。",
+      "source": {
+        "page": 32,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-NC-01",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "6.3.4.4 表6",
+      "title": "强制节点配置服务",
+      "requirement": "响应方必须支持 ReadByIdentifier（0xB2）和 AssignFrameIdentifierRange（0xB7）；AssignNAD、SaveConfiguration、DataDump 可选；ConditionalChangeNAD 已废止。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ],
+        "features": [
+          "node-config"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "分别发送 B2（标识符 0）与 B7 请求，断言有正确的肯定响应。",
+      "source": {
+        "page": 36,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-NC-02",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "6.3.6.6 表18",
+      "title": "ReadByIdentifier 标识符 0 和 2",
+      "requirement": "必须支持标识符 0（产品标识，响应 RSID+5 字节）和标识符 2（位时序测试，返回否定响应）；LDF/NCF 带文件版本时还须支持标识符 3。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ],
+        "features": [
+          "node-config"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "B2 标识符 0 → F2 + 供应商ID/功能ID/变体；标识符 2 → 7F B2 12；不支持的标识符 → 7F B2 12。",
+      "source": {
+        "page": 41,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-NC-03",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "6.2.3 / 6.3.5",
+      "title": "支持通配",
+      "requirement": "节点配置请求中的通配 NAD（0x7F）、通配供应商 ID（0x7FFF）、通配功能 ID（0xFFFF）必须被识别。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ],
+        "features": [
+          "node-config"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "用 NAD 0x7F 与供应商 ID 0x7FFF 发送 B2 标识符 0，断言本节点响应。",
+      "source": {
+        "page": 33,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-NC-04",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "6.3.4.1 / 6.3.4.6",
+      "title": "配置服务只用单帧且填充 0xFF",
+      "requirement": "节点配置与识别服务的请求和响应都使用单帧；PDU 未填满的字节为 0xFF。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ],
+        "features": [
+          "node-config"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "检查 B2/B7 响应：PCI 为单帧，未用字节为 FF。",
+      "source": {
+        "page": 35,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-NC-05",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "6.3.4.5",
+      "title": "配置请求立即处理",
+      "requirement": "响应方立即处理配置请求，并能在下一个从节点应答帧（0x3D）中给出响应；节点配置不使用 P2 与 ST。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ],
+        "features": [
+          "node-config"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "发送 B2 请求后紧接一个 0x3D 报头，断言该报头即带回响应。",
+      "source": {
+        "page": 37,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-NC-06",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "6.3.5",
+      "title": "挂起响应的取消与保留",
+      "requirement": "收到新的有效主请求（功能 NAD 除外）或 N_As 超时时取消挂起的配置响应；收到无效主请求（报头/校验和/帧格式错误）时继续原请求；请求与响应之间插入无条件帧不影响挂起响应。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ],
+        "features": [
+          "node-config"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "B2 请求后：①插入 0x2C 报头再发 0x3D → 仍有响应；②发新请求 → 原响应被取消；③注入校验和错误的 0x3C → 原响应保留。",
+      "source": {
+        "page": 37,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-NC-07",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "6.3.6.1",
+      "title": "AssignNAD 响应规则",
+      "requirement": "AssignNAD（可选）：只在支持该服务且 PCI 长度、供应商 ID、功能 ID 均匹配时处理；肯定应答使用请求中的初始 NAD；任何情况下都不发送否定应答——不支持该服务的节点应保持沉默。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ],
+        "features": [
+          "node-config"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "仅当实现 AssignNAD 时适用；不匹配的请求无响应。",
+      "source": {
+        "page": 38,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-NC-08",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "6.3.6.5",
+      "title": "AssignFrameIdentifierRange 规则",
+      "requirement": "诊断帧与保留帧（0x3C~0x3F）不得被重新分配；无法满足全部设置/取消分配时拒绝且不发送响应；处理成功才发肯定响应，从不发否定响应。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ],
+        "features": [
+          "node-config"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "B7 请求把索引 0 设为新 PID → 肯定响应且之后按新 PID 响应；请求涉及不存在的帧索引（非 FF）→ 无响应。",
+      "source": {
+        "page": 40,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-NC-09",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "6.3.6.4",
+      "title": "SaveConfiguration 规则",
+      "requirement": "SaveConfiguration（可选）：支持时在受理后立即发送肯定应答，不等待保存完成；任何情况下都不发送否定应答——不支持该服务的节点应保持沉默。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ],
+        "features": [
+          "node-config"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "仅当实现 SaveConfiguration 时适用。",
+      "source": {
+        "page": 39,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-NC-10",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "6.3.4.4",
+      "title": "不支持自动寻址时不响应 0xB8",
+      "requirement": "不支持自动寻址（AA）的应答节点对 0xB8 不作任何应答；对保留 SID 0xB9~0xBF 同样不应答。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ],
+        "features": [
+          "node-config"
+        ]
+      },
+      "method": "host-test",
+      "check_hint": "发送 B8 请求，断言无响应。",
+      "source": {
+        "page": 37,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-NC-11",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "6.3.3",
+      "title": "初始 NAD",
+      "requirement": "响应方上电时使用初始 NAD（来自 LDF/NCF 的初始 NAD 列表），与配置文件声明一致。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ],
+        "role": [
+          "responder"
+        ],
+        "features": [
+          "node-config"
+        ]
+      },
+      "method": "config",
+      "check_hint": "LDF initial_NAD / configured_NAD 与 ARXML LinIf/LinTp 节点 NAD、需求中的 NAD 一致。",
+      "source": {
+        "page": 34,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    },
+    {
+      "id": "LIN3-VER-01",
+      "standard": "ISO 17987-3",
+      "standard_key": "ISO17987-3",
+      "clause": "B.2",
+      "title": "协议版本声明一致",
+      "requirement": "LDF/NCF 中声明的 LIN 协议版本与节点实际实现的版本（及本标准版本兼容性规定）一致；跨版本时按兼容性附录处理差异。",
+      "applicability": {
+        "bus": [
+          "LIN"
+        ]
+      },
+      "method": "design",
+      "check_hint": "比较 LDF LIN_protocol_version、节点 LIN_protocol 与 BSW 实现版本；若声明为 2.1 而按 ISO 17987 实现，评审差异点（如节点配置服务、标识符 3）。",
+      "source": {
+        "page": 47,
+        "verified": true,
+        "by": "claude",
+        "date": "2026-11-26"
+      }
+    }
+  ],
+  "_scope": "收录响应方可判定要求；主节点（commander）要求标 role=commander；位级/物理层要求为 target。附录 C~F 自动寻址流程未收录（产品支持自动寻址时再补）。"
+}

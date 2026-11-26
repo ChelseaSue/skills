@@ -1,0 +1,78 @@
+{
+ "_comment": "示例：某 LIN 车载冷暖箱项目（LIN responder + UDS server）。取值仅为示例，必须按本项目填写。",
+ "project": {
+  "name": "F710S_CHB",
+  "version": "APP（当前工作副本）",
+  "author": ""
+ },
+ "workspace": "std_ws",
+ "packs": [
+  "lin-can-comm"
+ ],
+ "node": {
+  "bus": [
+   "LIN"
+  ],
+  "lin_role": "responder",
+  "uds_role": "server",
+  "ldf_name": "CHB",
+  "features": [
+   "diag",
+   "tp",
+   "sleep",
+   "node-config",
+   "functional-addressing",
+   "reprogramming"
+  ],
+  "supported_sids": "auto"
+ },
+ "inputs": {
+  "standards_dir": "LIN_CAN软件层级ISO标准文件",
+  "ldf": [
+   "01_VRM_APP_YTM32B1MD14/EAS_Config/LDF/F710S_LIN_CHB_CHBP.ldf"
+  ],
+  "dbc": [],
+  "arxml": [
+   "01_VRM_APP_YTM32B1MD14/EAS_Config/Arxml/Com_Com.arxml",
+   "01_VRM_APP_YTM32B1MD14/EAS_Config/Arxml/Dcm_Dcm.arxml",
+   "01_VRM_APP_YTM32B1MD14/EAS_Config/Arxml/EcuC_EcuC.arxml",
+   "01_VRM_APP_YTM32B1MD14/EAS_Config/Arxml/LinIf_LinIf.arxml",
+   "01_VRM_APP_YTM32B1MD14/EAS_Config/Arxml/LinTp_LinTp.arxml",
+   "01_VRM_APP_YTM32B1MD14/EAS_Config/Arxml/PduR_PduR.arxml"
+  ],
+  "sad": "docs/软件架构/F710S_CHB_统一分层架构设计_draft.md",
+  "source_root": "01_VRM_APP_YTM32B1MD14/Source"
+ },
+ "expected": {
+  "nad_physical": "0x0F",
+  "nad_functional": "0x7E",
+  "diag_request_id": "0x3C",
+  "diag_response_id": "0x3D",
+  "_source": "系统需求规格书 V1.4 6.1.8.2 诊断及刷写 ID"
+ },
+ "applicability_overrides": {},
+ "reviews": {
+  "<检查项ID>": {
+   "verdict": "符合",
+   "evidence": "<文件/章节/参数与结论依据>",
+   "by": "<评审人>",
+   "date": "YYYY-MM-DD"
+  }
+ },
+ "host": {
+  "dir": "std_ws/host",
+  "test_dir": "std_ws/host/test",
+  "support_dir": "std_ws/host/support",
+  "sources": [
+   "<协议栈源码，如 Source/BSW/BSW/LinIf/LinIf.c>",
+   "<配置生成物，如 Source/BSW/Config/LinIf_*.c>",
+   "<诊断回调 SWC 源码>"
+  ],
+  "include_dirs": [
+   "<BSW/Config 等 include 目录>"
+  ],
+  "mocks": [],
+  "defines": [],
+  "compiler": "gcc"
+ }
+}

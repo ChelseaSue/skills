@@ -1,0 +1,39 @@
+{
+  "id": "lin-can-comm",
+  "title": "LIN/CAN 通信与诊断协议（软件层）",
+  "version": "1.0.0",
+  "description": "车载 ECU 软件在 LIN/CAN 数据链路、传输层、UDS 诊断上的协议符合性。物理层与实时时序条款标为 target（转 SWE.6/HIL/一致性测试）。",
+  "standards": [
+    {"key": "ISO17987-3", "number": "ISO 17987-3", "edition": "2025", "title": "LIN — Protocol specification",
+     "scope_note": "LIN 数据链路层：信号、帧、PID、校验和、调度表、任务行为、状态管理、节点配置与识别、休眠唤醒",
+     "applies_to": {"bus": ["LIN"]}, "file_glob": "*17987-3*.pdf"},
+    {"key": "ISO17987-2", "number": "ISO 17987-2", "edition": "2025", "title": "LIN — Transport and network layer services",
+     "scope_note": "LIN 传输层：NAD、PCI（SF/FF/CF）、诊断帧 0x3C/0x3D、传输层定时、功能寻址",
+     "applies_to": {"bus": ["LIN"], "features": ["tp", "diag"]}, "file_glob": "*17987-2*.pdf"},
+    {"key": "ISO14229-7", "number": "ISO 14229-7", "edition": "2022", "title": "UDS on LIN (UDSonLIN)",
+     "scope_note": "UDS 在 LIN 上的映射：服务子集、寻址、定时参数映射",
+     "applies_to": {"bus": ["LIN"], "features": ["diag"]}, "file_glob": "*14229-7*.pdf"},
+    {"key": "ISO14229-1", "number": "ISO 14229-1", "edition": "2026", "title": "UDS — Application layer",
+     "scope_note": "UDS 应用层：服务、会话、安全访问、否定响应码与优先级、响应挂起；服务类条款按 sid 适用",
+     "applies_to": {"features": ["diag"]}, "file_glob": "*14229-1*.pdf"},
+    {"key": "ISO14229-2", "number": "ISO 14229-2", "edition": "2021", "title": "UDS — Session layer services",
+     "scope_note": "UDS 会话层：S3 会话保持、P2/P2* 定时、会话层服务原语",
+     "applies_to": {"features": ["diag"]}, "file_glob": "*14229-2*.pdf"},
+    {"key": "ISO14229-3", "number": "ISO 14229-3", "edition": "2022", "title": "UDS on CAN (UDSonCAN)",
+     "scope_note": "UDS 在 CAN 上的映射：寻址格式、定时参数映射",
+     "applies_to": {"bus": ["CAN"], "features": ["diag"]}, "file_glob": "*14229-3*.pdf"},
+    {"key": "ISO15765-2", "number": "ISO 15765-2", "edition": "2024", "title": "DoCAN — Transport protocol and network layer services",
+     "scope_note": "CAN 传输层：SF/FF/CF/FC、BS/STmin、N_As/N_Bs/N_Cr 定时、寻址格式、CAN FD 帧长",
+     "applies_to": {"bus": ["CAN"], "features": ["tp"]}, "file_glob": "*15765-2*.pdf"},
+    {"key": "ISO11898-1", "number": "ISO 11898-1", "edition": "2024", "title": "CAN — Data link layer and physical coding sublayer",
+     "scope_note": "CAN 数据链路层：帧格式、仲裁、错误检测与界定、bus-off；软件相关部分为控制器配置与 bus-off 处理，其余多为控制器硬件",
+     "applies_to": {"bus": ["CAN"]}, "file_glob": "*11898-1*.pdf"}
+  ],
+  "tags": {
+    "bus": ["LIN", "CAN"],
+    "lin_role": ["commander", "responder"],
+    "uds_role": ["client", "server"],
+    "features": ["diag", "tp", "sleep", "node-config", "event-frame", "sporadic-frame", "can-fd", "functional-addressing", "reprogramming"]
+  },
+  "role_aliases": {"master": "commander", "slave": "responder"}
+}

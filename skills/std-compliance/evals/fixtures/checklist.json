@@ -1,0 +1,29 @@
+{
+  "_comment": "Framework test fixtures — NOT part of any standard pack. Wording is generic and does not quote any standard.",
+  "items": [
+    {"id": "FX-CFG-DIAGFRAMES", "standard": "FIXTURE", "standard_key": "FIXTURE", "clause": "F.1",
+     "title": "诊断帧存在（夹具）", "requirement": "LDF 中存在 ID 0x3C 与 0x3D 的诊断帧。",
+     "applicability": {"bus": ["LIN"]}, "method": "config", "source": {"verified": false}},
+    {"id": "FX-CFG-NAD", "standard": "FIXTURE", "standard_key": "FIXTURE", "clause": "F.2",
+     "title": "NAD 一致（夹具）", "requirement": "LDF 中本节点 configured_NAD 与传输层配置的 NAD 一致。",
+     "applicability": {"bus": ["LIN"], "features": ["tp"]}, "method": "config", "source": {"verified": false}},
+    {"id": "FX-CFG-CANONLY", "standard": "FIXTURE", "standard_key": "FIXTURE", "clause": "F.3",
+     "title": "CAN 专用项（夹具）", "requirement": "仅 CAN 节点适用。", "applicability": {"bus": ["CAN"]},
+     "method": "config", "source": {"verified": false}},
+    {"id": "FX-HOST-PASS", "standard": "FIXTURE", "standard_key": "FIXTURE", "clause": "F.4",
+     "title": "宿主机测试通过（夹具）", "requirement": "夹具测试应通过。", "applicability": {"bus": ["LIN"]},
+     "method": "host-test", "source": {"verified": false}},
+    {"id": "FX-HOST-FAIL", "standard": "FIXTURE", "standard_key": "FIXTURE", "clause": "F.5",
+     "title": "宿主机测试失败（夹具）", "requirement": "夹具测试应失败，用于验证归集。", "applicability": {"bus": ["LIN"]},
+     "method": "host-test", "source": {"verified": false}},
+    {"id": "FX-TARGET", "standard": "FIXTURE", "standard_key": "FIXTURE", "clause": "F.6",
+     "title": "实时项（夹具）", "requirement": "需真实总线测量。", "applicability": {"bus": ["LIN"]},
+     "method": "target", "source": {"verified": false}},
+    {"id": "FX-DESIGN", "standard": "FIXTURE", "standard_key": "FIXTURE", "clause": "F.7",
+     "title": "设计评审项（夹具）", "requirement": "设计文档说明了休眠处理。", "applicability": {"bus": ["LIN"]},
+     "method": "design", "source": {"verified": false}},
+    {"id": "FX-SID", "standard": "FIXTURE", "standard_key": "FIXTURE", "clause": "F.8",
+     "title": "按服务适用（夹具）", "requirement": "仅支持 0x19 的节点适用。", "applicability": {"sid": ["0x19"]},
+     "method": "design", "source": {"verified": false}}
+  ]
+}

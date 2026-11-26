@@ -1,0 +1,23 @@
+{
+  "_comment": "Claude's transcription of SAD diagrams that exist only as images (model.py warns IMAGE-ONLY). Key = anchor ID (or anchor key). Use the exported PNG (ws/sad/images) and the Visio shape texts (diagram_hints in arch_model.json). Keep 'verified': false until a person has compared it with the drawing; check.py lists unverified ones as TODO.",
+  "diagrams": {
+    "SWAD-47979": {
+      "type": "sequence",
+      "source_image": "images/img_012.png",
+      "verified": false,
+      "participants": [{"alias": "Startup", "name": "Startup"}, {"alias": "SMIC", "name": "SMIC"}, {"alias": "HTOS", "name": "HTOS"}],
+      "messages": [
+        {"n": 1, "from": "Startup", "to": "SMIC", "label": "SMIC_vidInitClk()"},
+        {"n": 2, "from": "Startup", "to": "SMIC", "label": "SMIC_vidCallStdInit()"},
+        {"n": 3, "from": "Startup", "to": "HTOS", "label": "HTOS_vidScheduler()"}
+      ]
+    },
+    "SWAD-47595": {
+      "type": "state",
+      "source_image": "images/img_005.png",
+      "verified": false,
+      "states": ["INIT", "WORKING", "SLEEP"],
+      "transitions": [{"n": 1, "from": "INIT", "to": "WORKING", "label": "initialisation finished"}]
+    }
+  }
+}

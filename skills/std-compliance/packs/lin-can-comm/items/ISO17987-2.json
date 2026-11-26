@@ -1,0 +1,809 @@
+{
+ "standard": "ISO 17987-2:2025 LIN 传输层与网络层服务（含网络管理）",
+ "_note": "要点为自述概括，不是标准原文；页码为 PDF 页码。",
+ "items": [
+  {
+   "id": "LIN2-NM-01",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "5.4 表1",
+   "title": "休眠命令识别",
+   "requirement": "收到首字节为 0x00 的主请求帧（0x3C）即视为休眠命令，只解析第 1 字节，忽略第 2~8 字节，并进入总线休眠。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "sleep"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "注入 3C: 00 FF FF FF FF FF FF FF → 断言进入休眠（LinIf/LinSM 状态、EcuM 通知）；注入 00 12 34… 同样进入休眠。",
+   "source": {
+    "page": 16,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-NM-02",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "5.4",
+   "title": "总线静默 4~10 s 自动休眠",
+   "requirement": "总线无活动时，响应方在 4 s 内仍能正常收发；最早 4 s、最迟 10 s 自动进入总线休眠。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "sleep"
+    ]
+   },
+   "method": "host-test",
+   "params": {
+    "min_s": 4,
+    "max_s": 10
+   },
+   "check_hint": "停止注入任何帧，按节拍推进：3.9 s 时仍为运行态，10 s 前已进入休眠；结合 LinIf 总线静默超时参数。",
+   "source": {
+    "page": 16,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-NM-03",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "5.4",
+   "title": "总线静默超时配置",
+   "requirement": "总线静默自动休眠时间配置在 4~10 s 范围内。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "sleep"
+    ]
+   },
+   "method": "config",
+   "params": {
+    "min_s": 4,
+    "max_s": 10
+   },
+   "check_hint": "ARXML LinIf/LinSM/EcuM 的总线空闲超时参数，或代码中的静默计时常量。",
+   "source": {
+    "page": 16,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-NM-04",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "5.3.2",
+   "title": "被唤醒后进入空闲态",
+   "requirement": "响应方检测到唤醒信号后，任务状态机启动并进入空闲态；在进入活动态前不得在总线上发出显性电平。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "sleep"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "从休眠态注入唤醒事件，断言 LIN 状态机为空闲/等待报头，未主动发送任何数据，直到收到报头。",
+   "source": {
+    "page": 14,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-NM-05",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "5.3.2",
+   "title": "唤醒后 100 ms 内就绪",
+   "requirement": "响应方检测到唤醒脉冲后，应在 100 ms 内准备好接收总线命令。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "sleep"
+    ]
+   },
+   "method": "target",
+   "target_note": "唤醒就绪时间是真实时间，需在目标机测量唤醒脉冲到首个报头被正确处理的时间。",
+   "source": {
+    "page": 14,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-NM-06",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "5.3.3",
+   "title": "本节点发起唤醒的重试规则",
+   "requirement": "响应方发出唤醒信号后若 150~250 ms 内主节点未开始发帧，则重发；连续 3 次失败后至少等待 1.5 s 再发第 4 次；发起唤醒的响应方自身应立即可收发。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "local-wakeup"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "仅当节点会主动唤醒总线（本地唤醒源）时适用；按节拍验证重试间隔与 1.5 s 等待。",
+   "source": {
+    "page": 14,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-NM-07",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "5.3.2/5.3.3",
+   "title": "唤醒脉冲检测门限",
+   "requirement": "唤醒信号为持续 >150 µs 的显性脉冲后跟上升沿，由收发器（及/或 MCU LIN 接口）检测。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "sleep"
+    ]
+   },
+   "method": "target",
+   "target_note": "电平与脉宽检测属于物理层，在目标机用示波器/一致性测试验证。",
+   "source": {
+    "page": 14,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-TP-01",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "7.4 / 7.5.4.2",
+   "title": "分段传输与序号",
+   "requirement": "多帧传输以首帧开始、其后均为连续帧；序号首帧视为 0，首个连续帧为 1，逐帧加 1，到 0xF 后回绕为 0。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "触发一个超过 6 字节的响应（如读长 DID），检查首帧 + 连续帧序号 1,2,…,F,0,1…。",
+   "source": {
+    "page": 25,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-TP-02",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "7.4.4",
+   "title": "收齐最后一帧才上交",
+   "requirement": "接收方收到最后一个连续帧后才把完整报文交给上层。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "发送多帧请求，最后一帧前断言 Dcm 未收到请求，最后一帧后才处理。",
+   "source": {
+    "page": 25,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-TP-03",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "7.6.3",
+   "title": "非法单帧长度被忽略",
+   "requirement": "数据长度为 0 或大于 6 的单帧被接收方忽略。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "注入 SF_DL=0 与 SF_DL=7 的单帧，断言无响应、Dcm 未收到请求。",
+   "source": {
+    "page": 33,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-TP-04",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "7.6.3",
+   "title": "非法首帧长度被忽略",
+   "requirement": "数据长度小于 7、或大于本节点接收缓冲区的首帧被忽略，且不开始接收。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "注入 FF_DL=6 与 FF_DL>缓冲区大小 的首帧，断言忽略；再发合法请求能正常处理。",
+   "source": {
+    "page": 33,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-TP-05",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "7.6.3",
+   "title": "意外 PCI 类型被忽略",
+   "requirement": "除单帧、首帧外，非预期的 PCI 类型（如不在接收过程中的连续帧、未知 PCI）被忽略且不通知上层。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "空闲时注入连续帧或 PCI 高半字节为 3~F 的帧，断言无响应、无上层通知。",
+   "source": {
+    "page": 33,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-TP-06",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "7.6.3",
+   "title": "序号错误中止接收",
+   "requirement": "收到序号不符的连续帧时中止接收，并以错误结果通知上层。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "首帧后发送序号为 2 的连续帧，断言接收中止、Dcm 不处理该请求、不发响应。",
+   "source": {
+    "page": 33,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-TP-07",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "7.6.3 表12",
+   "title": "N_Cr 超时中止接收",
+   "requirement": "分段接收中两个连续帧间隔超过 N_Cr 时接收方中止接收。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "首帧后停止发送，按节拍推进超过配置的 N_Cr，断言接收中止；随后新请求可正常处理。",
+   "source": {
+    "page": 33,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-TP-08",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "7.6.3 表12",
+   "title": "N_As 超时中止发送",
+   "requirement": "发送方在 N_As 内未得到帧发送确认时中止发送。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "响应进行中不再提供 0x3D 报头，超过 N_As 后断言发送中止、状态复位。",
+   "source": {
+    "page": 33,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-TP-09",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "7.6.1 表12",
+   "title": "传输层超时取值",
+   "requirement": "N_As、N_Cr 超时不超过 1000 ms，且不超过 LDF/NCF 中声明的 N_As_timeout、N_Cr_timeout（声明值是实现的上限）。实现值小于声明值时，主节点按声明值调度可能导致本节点提前超时，需在报告中提示。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "config",
+   "params": {
+    "N_As_max_ms": 1000,
+    "N_Cr_max_ms": 1000
+   },
+   "check_hint": "ARXML LinTp LinTpNas/LinTpNcr 与 LDF Node_attributes 的 N_As_timeout/N_Cr_timeout 比较。",
+   "source": {
+    "page": 31,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-TP-10",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "7.6.3",
+   "title": "其他帧错误不影响分段传输",
+   "requirement": "分段传输过程中，其他帧或报头的错误不影响正在进行的报文发送与接收。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "多帧接收过程中插入校验和错误的 0x0C 帧，断言分段接收继续完成。",
+   "source": {
+    "page": 34,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-TP-11",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "7.6.3",
+   "title": "进入休眠清除挂起传输",
+   "requirement": "节点进入总线休眠时，清除挂起或进行中的请求接收/响应发送，并通知上层。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "tp",
+     "sleep"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "多帧响应进行中注入休眠命令，唤醒后断言不再续发旧响应。",
+   "source": {
+    "page": 33,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-TP-12",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "7.3",
+   "title": "响应方不按 ST 调度",
+   "requirement": "响应方发送多帧响应时不负责 ST_min 间隔（由主节点调度保证）；响应方声明的 ST_min 与其接收能力一致。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "config",
+   "check_hint": "LDF Node_attributes.ST_min 与 ARXML/实现的接收处理能力一致（本节点为 0 ms 时需能背靠背接收连续帧）。",
+   "source": {
+    "page": 24,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-TP-13",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "7.4.5.2",
+   "title": "响应 NAD 与请求一致",
+   "requirement": "响应帧中的 NAD 使用本节点（请求所寻址）的 NAD。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "物理寻址请求后检查 0x3D 响应首字节等于本节点 NAD。",
+   "source": {
+    "page": 26,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-TP-14",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "9.7.3",
+   "title": "只响应发给自己的物理请求",
+   "requirement": "响应方只处理发给本节点 NAD（或功能/广播 NAD）的请求；非本节点 NAD 的请求不处理，且会使本节点放弃挂起的连接。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "发送 NAD≠本节点的请求，断言不响应；处理中收到发给其他节点的新请求，断言放弃当前请求/响应。",
+   "source": {
+    "page": 54,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-TP-15",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "9.7.3",
+   "title": "新物理请求取代当前事务",
+   "requirement": "收到新的物理寻址请求时，放弃当前请求或响应；若新请求寻址本节点则处理之。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "tp"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "多帧响应进行中发送新的单帧请求，断言旧响应终止、新请求得到响应。",
+   "source": {
+    "page": 54,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-TP-16",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "9.7.3",
+   "title": "物理事务进行中忽略功能请求",
+   "requirement": "正在接收物理请求或发送物理响应时，插入的功能寻址（NAD 0x7E）请求被忽略。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "tp",
+     "functional-addressing"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "多帧物理请求过程中插入 7E 单帧（如 3E 80），断言被忽略且物理事务正常完成。",
+   "source": {
+    "page": 54,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-TP-17",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "9.7.3",
+   "title": "功能请求不回应答",
+   "requirement": "功能寻址请求由响应方处理但不发送响应（不回应 0x3D 报头）。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "tp",
+     "functional-addressing"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "发送 7E 02 3E 80，然后注入 0x3D 报头，断言无响应。",
+   "source": {
+    "page": 54,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-DG-01",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "9.4 表16",
+   "title": "P2/P2* 取值范围",
+   "requirement": "响应方的 P2 在 50~500 ms 之间，P2* 不超过 2000 ms，并与 LDF/NCF 声明的 P2_min 一致。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "config",
+   "params": {
+    "P2_min_ms": 50,
+    "P2_max_ms": 500,
+    "P2star_max_ms": 2000
+   },
+   "check_hint": "ARXML Dcm DcmDspSessionP2ServerMax/P2StarServerMax、LinTp LinTpP2Timing/LinTpP2Max 与 LDF P2_min 比较。",
+   "source": {
+    "page": 43,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-DG-02",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "9.5",
+   "title": "响应挂起后必须有最终响应",
+   "requirement": "处理时间超过 P2 时发送响应挂起（NRC 0x78），可在 P4 内重复；一旦发送响应挂起，必须给出最终的肯定或否定响应。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "host-test",
+   "check_hint": "与 UDS2-TIM-03 同一场景，在 LIN 上验证 0x3D 应答序列。",
+   "source": {
+    "page": 44,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-DG-03",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "9.1 表17",
+   "title": "诊断类别与能力一致",
+   "requirement": "响应方声明的诊断类别（I/II/III）与其实现的传输层能力和服务一致：类别 II/III 必须支持完整多帧传输与 ReadByIdentifier 产品标识；类别 III 具备故障存储及读清服务。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "design",
+   "check_hint": "对照 NCF/需求中声明的诊断类别，核对 LinTp 多帧能力、ReadByIdentifier、DTC 读清（0x19/0x14）是否实现。",
+   "source": {
+    "page": 41,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-DG-04",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "9.2",
+   "title": "SID/RSID 遵循 UDSonLIN",
+   "requirement": "诊断报文的 SID 与 RSID 按 ISO 14229-7 定义。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "responder"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "design",
+   "check_hint": "Dcm 服务表中的 SID 均属于 ISO 14229-7 允许的服务（见 UDS7 检查项）。",
+   "source": {
+    "page": 41,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  },
+  {
+   "id": "LIN2-SCH-01",
+   "standard": "ISO 17987-2",
+   "standard_key": "ISO17987-2",
+   "clause": "9.6",
+   "title": "诊断调度（主节点）",
+   "requirement": "主节点提供只含一个主请求帧和只含一个从应答帧的诊断调度表，按需插入正常调度，无诊断时不执行诊断调度。",
+   "applicability": {
+    "bus": [
+     "LIN"
+    ],
+    "role": [
+     "commander"
+    ],
+    "features": [
+     "diag"
+    ]
+   },
+   "method": "design",
+   "source": {
+    "page": 45,
+    "verified": true,
+    "by": "claude",
+    "date": "2026-11-26"
+   }
+  }
+ ],
+ "_scope": "收录响应方的网络管理（唤醒/休眠）、传输层与诊断要求；第 10~12 章 NCF/LDF 语法约束工具与文件，未收录（LDF 一致性由 config 规则覆盖）。"
+}
